@@ -10,8 +10,8 @@ struct MessageReviewView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                // Message Display
+            VStack(spacing: 0) {
+                // Message Display - Fixed at top
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Here's your message:")
                         .font(.headline)
@@ -21,88 +21,99 @@ struct MessageReviewView: View {
                         .padding()
                         .background(Color.blue.opacity(0.1))
                         .cornerRadius(12)
-                        .frame(minHeight: 100, maxHeight: 300)
+                        .frame(minHeight: 100, maxHeight: 200)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(Color.blue.opacity(0.3), lineWidth: 1)
                         )
                 }
                 .padding(.horizontal)
+                .padding(.top, 16)
+                .background(Color(UIColor.systemBackground))
                 
-                // Tone Selection
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Choose a tone:")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
-                        ForEach(MessageTone.allCases, id: \.self) { tone in
+                // Scrollable content area
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Tone Selection
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Choose a tone:")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                            
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
+                                ForEach(MessageTone.allCases, id: \.self) { tone in
+                                    Button(action: {
+                                        Task {
+                                            await viewModel.regenerateWithTone(tone)
+                                        }
+                                    }) {
+                                        VStack(spacing: 8) {
+                                            Text(tone.emoji)
+                                                .font(.title2)
+                                            Text(tone.rawValue)
+                                                .font(.caption)
+                                                .fontWeight(.medium)
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(message.tone == tone ? Color.blue : Color.gray.opacity(0.1))
+                                        .foregroundColor(message.tone == tone ? .white : .primary)
+                                        .cornerRadius(12)
+                                    }
+                                    .disabled(viewModel.isProcessing)
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                        
+                        // Custom Prompt
+                        VStack(alignment: .leading, spacing: 12) {
                             Button(action: {
-                                Task {
-                                    await viewModel.regenerateWithTone(tone)
-                                }
+                                showCustomPrompt = true
                             }) {
-                                VStack(spacing: 8) {
-                                    Text(tone.emoji)
-                                        .font(.title2)
-                                    Text(tone.rawValue)
-                                        .font(.caption)
-                                        .fontWeight(.medium)
+                                HStack {
+                                    Image(systemName: "plus.circle")
+                                    Text("Add custom instructions")
                                 }
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(message.tone == tone ? Color.blue : Color.gray.opacity(0.1))
-                                .foregroundColor(message.tone == tone ? .white : .primary)
-                                .cornerRadius(12)
+                                .foregroundColor(.blue)
                             }
                             .disabled(viewModel.isProcessing)
+                            
+                            if let customPrompt = message.customPrompt, !customPrompt.isEmpty {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Custom instructions:")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(customPrompt)
+                                        .font(.caption)
+                                        .padding()
+                                        .background(Color.green.opacity(0.1))
+                                        .cornerRadius(8)
+                                }
+                            }
                         }
+                        .padding(.horizontal)
+                        
+                        // Processing indicator
+                        if viewModel.isProcessing {
+                            HStack {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                Text("Processing...")
+                                    .font(.caption)
+                            }
+                            .foregroundColor(.secondary)
+                            .padding()
+                        }
+                        
+                        // Extra padding at bottom for safe scrolling
+                        Spacer(minLength: 100)
                     }
+                    .padding(.top, 20)
                 }
-                .padding(.horizontal)
                 
-                // Custom Prompt
-                VStack(alignment: .leading, spacing: 12) {
-                    Button(action: {
-                        showCustomPrompt = true
-                    }) {
-                        HStack {
-                            Image(systemName: "plus.circle")
-                            Text("Add custom instructions")
-                        }
-                        .foregroundColor(.blue)
-                    }
-                    .disabled(viewModel.isProcessing)
-                    
-                    if let customPrompt = message.customPrompt, !customPrompt.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Custom instructions:")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text(customPrompt)
-                                .font(.caption)
-                                .padding()
-                                .background(Color.green.opacity(0.1))
-                                .cornerRadius(8)
-                        }
-                    }
-                }
-                .padding(.horizontal)
-                
-                Spacer()
-                
-                // Action Buttons
+                // Action Buttons - Fixed at bottom
                 VStack(spacing: 12) {
-                    if viewModel.isProcessing {
-                        HStack {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                            Text("Processing...")
-                                .font(.caption)
-                        }
-                        .foregroundColor(.secondary)
-                    }
-                    
                     HStack(spacing: 16) {
                         Button("Cancel") {
                             dismiss()
@@ -118,6 +129,8 @@ struct MessageReviewView: View {
                     }
                 }
                 .padding(.horizontal)
+                .padding(.bottom, 16)
+                .background(Color(UIColor.systemBackground))
             }
             .navigationTitle("Review Message")
             .navigationBarTitleDisplayMode(.inline)

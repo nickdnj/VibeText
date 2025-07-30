@@ -51,7 +51,15 @@ class MessageFormatter: ObservableObject {
     // MARK: - Private Methods
     
     private func buildUserPrompt(transcript: String, customPrompt: String?) -> String {
-        var prompt = "Please clean up and improve this transcribed message: \"\(transcript)\""
+        var prompt = """
+        You're given a raw, stream-of-consciousness transcript where the speaker may change topics mid-sentence, revisit earlier points, or add thoughts out of order. 
+        
+        Your task is to turn this into a clear, logically organized message that preserves the speaker's intent. Summarize or reorder ideas if needed for clarity, and remove filler or redundant phrases. 
+        
+        Do not include any commentary—only return the clean, structured message.
+        
+        Transcript: "\(transcript)"
+        """
         
         if let customPrompt = customPrompt, !customPrompt.isEmpty {
             prompt += "\n\nAdditional instructions: \(customPrompt)"

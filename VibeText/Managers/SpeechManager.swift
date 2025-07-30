@@ -2,6 +2,7 @@ import Foundation
 import Speech
 import AVFoundation
 import Combine
+import UIKit
 
 /// Manages voice recording and speech-to-text transcription
 class SpeechManager: NSObject, ObservableObject {
@@ -39,6 +40,11 @@ class SpeechManager: NSObject, ObservableObject {
         }
         if let routeObserver = audioSessionRouteChangeObserver {
             NotificationCenter.default.removeObserver(routeObserver)
+        }
+        
+        // Ensure screen sleep is always re-enabled when manager is deallocated
+        DispatchQueue.main.async {
+            UIApplication.shared.isIdleTimerDisabled = false
         }
     }
     
@@ -253,9 +259,19 @@ class SpeechManager: NSObject, ObservableObject {
             isRecording = true
             recordingDuration = 0
             startRecordingTimer()
-            print("🎤 Recording started successfully")
+            
+            // Keep screen awake during recording
+            DispatchQueue.main.async {
+                UIApplication.shared.isIdleTimerDisabled = true
+            }
+            
+            print("🎤 Recording started successfully - screen will stay awake")
         } else {
             errorMessage = "Failed to start recording."
+            // Ensure screen sleep is re-enabled if recording fails
+            DispatchQueue.main.async {
+                UIApplication.shared.isIdleTimerDisabled = false
+            }
         }
     }
     
@@ -294,7 +310,12 @@ class SpeechManager: NSObject, ObservableObject {
             // Don't treat this as a critical error - session might already be inactive
         }
         
-        print("✅ Recording stopped successfully")
+        // Re-enable screen sleep
+        DispatchQueue.main.async {
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
+        
+        print("✅ Recording stopped successfully - screen sleep re-enabled")
     }
     
     // MARK: - Recording Timer
