@@ -8,6 +8,9 @@ class SettingsManager: ObservableObject {
     @Published var isUsingDefaultKey: Bool = true
     
     private let keychainService = "com.d3marco.VibeText"
+    // App Groups disabled for now - using standard approach
+    // private let keychainAccessGroup = "group.com.d3marco.VibeText.shared"
+    // private let sharedUserDefaults = UserDefaults(suiteName: "group.com.d3marco.VibeText.shared")
     private let apiKeyKey = "OpenAIAPIKey"
     private let lastToneKey = "LastUsedTone"
     private let defaultAPIKey = "sk-your-default-key-here" // Replace with actual default key
@@ -69,6 +72,9 @@ class SettingsManager: ObservableObject {
     // MARK: - Keychain Operations
     
     private func saveAPIKeyToKeychain(_ key: String) {
+        print("🔑 Main App: Saving API key to standard keychain...")
+        
+        // Standard keychain save (no App Groups for now)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
@@ -76,17 +82,23 @@ class SettingsManager: ObservableObject {
             kSecValueData as String: key.data(using: .utf8)!
         ]
         
+        print("🔑 Main App: Using standard keychain storage")
         // Delete existing key first
         SecItemDelete(query as CFDictionary)
         
         // Add new key
         let status = SecItemAdd(query as CFDictionary, nil)
         if status != errSecSuccess {
-            print("Failed to save API key to keychain: \(status)")
+            print("❌ Main App: Failed to save API key to keychain: \(status)")
+        } else {
+            print("✅ Main App: Successfully saved API key to keychain")
         }
     }
     
     private func loadAPIKeyFromKeychain() -> String {
+        print("🔑 Main App: Loading API key from standard keychain...")
+        
+        // Standard keychain load (no App Groups for now)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
@@ -95,15 +107,18 @@ class SettingsManager: ObservableObject {
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
         
+        print("🔑 Main App: Querying standard keychain...")
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         
         if status == errSecSuccess,
            let data = result as? Data,
            let key = String(data: data, encoding: .utf8) {
+            print("✅ Main App: Successfully loaded API key from keychain (length: \(key.count))")
             return key
         }
         
+        print("❌ Main App: Failed to load API key from keychain (status: \(status))")
         return ""
     }
     
@@ -114,6 +129,8 @@ class SettingsManager: ObservableObject {
             kSecAttrAccount as String: apiKeyKey
         ]
         
-        SecItemDelete(query as CFDictionary)
+        print("🔑 Main App: Deleting API key from standard keychain")
+        let status = SecItemDelete(query as CFDictionary)
+        print("🔑 Main App: Delete status: \(status)")
     }
 } 
