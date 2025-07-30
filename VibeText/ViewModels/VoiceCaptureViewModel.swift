@@ -29,6 +29,9 @@ class VoiceCaptureViewModel: ObservableObject {
     
     func stopRecording() {
         speechManager.stopRecording()
+        
+        // Start processing transcript when it becomes available
+        // We'll monitor the transcript changes and process when transcription completes
     }
     
     func processTranscript() async {
@@ -131,6 +134,10 @@ class VoiceCaptureViewModel: ObservableObject {
         speechManager.clearTranscript()
     }
     
+    func updateMessageText(_ newText: String) {
+        currentMessage?.cleanedText = newText
+    }
+    
     // MARK: - Private Methods
     
     private func setupBindings() {
@@ -138,6 +145,21 @@ class VoiceCaptureViewModel: ObservableObject {
         speechManager.$errorMessage
             .compactMap { $0 }
             .assign(to: \.errorMessage, on: self)
+            .store(in: &cancellables)
+        
+        // Monitor transcript changes and automatically process when transcription completes
+        speechManager.$transcript
+            .filter { !$0.isEmpty }
+            .filter { [weak self] _ in
+                // Only process if we're not currently transcribing
+                self?.speechManager.isTranscribing == false
+            }
+            .sink { [weak self] transcript in
+                // Process the transcript automatically when it becomes available
+                Task {
+                    await self?.processTranscript()
+                }
+            }
             .store(in: &cancellables)
     }
 } 

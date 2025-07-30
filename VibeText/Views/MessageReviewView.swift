@@ -6,6 +6,7 @@ struct MessageReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var customPrompt: String = ""
     @State private var showCustomPrompt = false
+    @State private var editableText: String = ""
     
     var body: some View {
         NavigationView {
@@ -16,11 +17,15 @@ struct MessageReviewView: View {
                         .font(.headline)
                         .foregroundColor(.secondary)
                     
-                    Text(message.cleanedText)
+                    TextEditor(text: $editableText)
                         .padding()
                         .background(Color.blue.opacity(0.1))
                         .cornerRadius(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(minHeight: 100, maxHeight: 300)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                        )
                 }
                 .padding(.horizontal)
                 
@@ -107,7 +112,7 @@ struct MessageReviewView: View {
                         Spacer()
                         
                         Button("Copy to Clipboard") {
-                            UIPasteboard.general.string = message.cleanedText
+                            UIPasteboard.general.string = editableText
                         }
                         .foregroundColor(.blue)
                     }
@@ -119,6 +124,8 @@ struct MessageReviewView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
+                        // Update the message with edited text before dismissing
+                        viewModel.updateMessageText(editableText)
                         dismiss()
                     }
                 }
@@ -129,6 +136,14 @@ struct MessageReviewView: View {
                 customPrompt: $customPrompt,
                 viewModel: viewModel
             )
+        }
+        .onAppear {
+            // Initialize editable text with the current message
+            editableText = message.cleanedText
+        }
+        .onChange(of: message.cleanedText) { newValue in
+            // Update editable text when message is regenerated
+            editableText = newValue
         }
     }
 }
@@ -160,9 +175,15 @@ struct CustomPromptView: View {
                     .foregroundColor(.secondary)
                 }
                 
-                TextField("Enter your custom instructions...", text: $customPrompt, axis: .vertical)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .lineLimit(3...6)
+                TextEditor(text: $customPrompt)
+                    .padding()
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                    .frame(minHeight: 80, maxHeight: 200)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    )
                 
                 Spacer()
                 

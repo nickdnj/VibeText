@@ -1,0 +1,51 @@
+# VibeText Development Rules for Cursor
+
+## Quick Commands
+When working on VibeText, use these commands:
+
+### Build and Deploy:
+```bash
+./build_and_test.sh
+```
+
+### Manual Build Commands:
+```bash
+# Build for iPhone
+xcodebuild -scheme VibeText -destination "platform=iOS,id=00008140-000A24EC3C90801C" -configuration Debug build
+
+# Install on device
+xcrun devicectl device install app --device 00008140-000A24EC3C90801C /Users/nickd/Library/Developer/Xcode/DerivedData/VibeText-dcdywwtrrkccicbdrrneuvfblqmi/Build/Products/Debug-iphoneos/VibeText.app
+```
+
+## Test Loop Workflow
+1. **Device Check**: Ensure iPhone 16 is connected
+2. **Build**: Run `./build_and_test.sh`
+3. **Test**: Follow the test checklist in the script output
+4. **Report**: Describe observed behavior and issues
+5. **Fix**: Implement necessary changes
+6. **Repeat**: Go back to step 2
+
+## Key Test Scenarios
+- Core recording functionality
+- Audio session stability with TextEditor
+- Message editing feature
+- Interruption handling
+- Duration limits (5-minute auto-stop)
+
+## Common Issues to Watch For
+- Audio session error -50 (TextEditor conflicts)
+- Recording stops prematurely
+- TextEditor not editable
+- Copy button uses original text
+- Timer doesn't update
+
+## File Structure
+- `VibeText_TestLoop.md`: Complete testing guide
+- `build_and_test.sh`: Automated build and deploy script
+- `.cursorrules`: This file (quick reference)
+
+## Next Steps After Testing
+1. Document any issues found
+2. Prioritize fixes (High/Medium/Low)
+3. Implement fixes
+4. Re-test with the same workflow 
