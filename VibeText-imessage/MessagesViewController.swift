@@ -61,16 +61,14 @@ class MessagesViewController: MSMessagesAppViewController {
             return
         }
         
-        // Create the message
-        let message = MSMessage()
-        message.summaryText = text
+        print("🎯 Inserting text into iMessage compose field: '\(text)'")
         
-        // Insert the message into the conversation
-        conversation.insert(message) { error in
+        // Insert the plain text directly into the iMessage compose field
+        conversation.insertText(text) { error in
             if let error = error {
-                print("❌ Failed to send message: \(error.localizedDescription)")
+                print("❌ Failed to insert text: \(error.localizedDescription)")
             } else {
-                print("✅ Message sent successfully")
+                print("✅ Text inserted successfully into compose field")
             }
         }
     }

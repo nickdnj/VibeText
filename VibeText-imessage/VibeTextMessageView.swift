@@ -15,6 +15,7 @@ struct VibeTextMessageView: View {
     @StateObject private var viewModel: MessageExtensionViewModel
     @State private var showAPIKeyInput = false
     @State private var tempAPIKey = ""
+    @State private var editableMessageText = ""
     
     private let onSendMessage: (String) -> Void
     
@@ -68,12 +69,34 @@ struct VibeTextMessageView: View {
                             .foregroundColor(.secondary)
                         
                         if let currentMessage = viewModel.currentMessage {
-                            Text(currentMessage.cleanedText)
-                                .padding(12)
-                                .background(Color.blue.opacity(0.1))
-                                .cornerRadius(8)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .lineLimit(4)
+                            ZStack(alignment: .topLeading) {
+                                // iMessage-style background
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color(UIColor.systemGray6))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(Color(UIColor.systemGray4), lineWidth: 0.5)
+                                    )
+                                
+                                // Multiline, scrollable TextEditor
+                                TextEditor(text: $editableMessageText)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color.clear)
+                                    .font(.body)
+                                    .scrollContentBackground(.hidden)
+                                    .frame(minHeight: 120, maxHeight: 180)
+                                
+                                // Placeholder when empty
+                                if editableMessageText.isEmpty {
+                                    Text("Tap to edit message...")
+                                        .foregroundColor(Color(UIColor.placeholderText))
+                                        .font(.body)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 14)
+                                        .allowsHitTesting(false)
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal)
@@ -92,7 +115,7 @@ struct VibeTextMessageView: View {
                                 ForEach(MessageTone.allCases, id: \.self) { tone in
                                     Button(action: {
                                         Task {
-                                            await viewModel.regenerateWithTone(tone)
+                                            await regenerateWithTone(tone)
                                         }
                                     }) {
                                         VStack(spacing: 4) {
@@ -140,12 +163,12 @@ struct VibeTextMessageView: View {
                         Spacer()
                         
                         Button("Send Message") {
-                            if let message = viewModel.currentMessage {
-                                onSendMessage(message.cleanedText)
-                                viewModel.reset()
-                            }
+                            // Send the edited text directly from the canvas
+                            onSendMessage(editableMessageText)
+                            viewModel.reset()
+                            editableMessageText = ""
                         }
-                        .disabled(viewModel.currentMessage == nil)
+                        .disabled(editableMessageText.isEmpty)
                         .foregroundColor(.blue)
                         .fontWeight(.semibold)
                     }
@@ -285,6 +308,38 @@ struct VibeTextMessageView: View {
             Spacer()
         }
         .frame(maxHeight: 350) // Constrain height for iMessage extension
+        .onChange(of: viewModel.currentMessage?.cleanedText) { newText in
+            // Update editable text when a new message is processed or regenerated
+            if let text = newText, !text.isEmpty {
+                editableMessageText = text
+            }
+        }
+        .onChange(of: viewModel.currentMessage?.id) { _ in
+            // Initialize editable text when a new message is created
+            if let message = viewModel.currentMessage {
+                editableMessageText = message.cleanedText
+            }
+        }
+    }
+    
+    // MARK: - Private Methods
+    
+    private func regenerateWithTone(_ tone: MessageTone) async {
+        guard let message = viewModel.currentMessage else { return }
+        
+        // Use the messageFormatter to regenerate text
+        if let newText = await messageFormatter.regenerateWithTone(
+            message.originalTranscript,
+            tone: tone,
+            customPrompt: message.customPrompt
+        ) {
+            await MainActor.run {
+                editableMessageText = newText
+                viewModel.currentMessage?.cleanedText = newText
+                viewModel.currentMessage?.tone = tone
+                settingsManager.saveLastUsedTone(tone)
+            }
+        }
     }
     
     // MARK: - Computed Properties

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a voice message and its various transformations
-struct Message: Identifiable, Codable {
+struct Message: Identifiable, Codable, Equatable {
     let id = UUID()
     let originalTranscript: String
     var cleanedText: String
@@ -14,6 +14,11 @@ struct Message: Identifiable, Codable {
         self.cleanedText = cleanedText
         self.tone = tone
         self.createdAt = Date()
+    }
+    
+    // MARK: - Equatable
+    static func == (lhs: Message, rhs: Message) -> Bool {
+        return lhs.id == rhs.id
     }
 }
 

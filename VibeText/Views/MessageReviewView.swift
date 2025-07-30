@@ -7,6 +7,7 @@ struct MessageReviewView: View {
     @State private var customPrompt: String = ""
     @State private var showCustomPrompt = false
     @State private var editableText: String = ""
+    @State private var isRegenerating = false
     
     var body: some View {
         NavigationView {
@@ -17,15 +18,34 @@ struct MessageReviewView: View {
                         .font(.headline)
                         .foregroundColor(.secondary)
                     
-                    TextEditor(text: $editableText)
-                        .padding()
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(12)
-                        .frame(minHeight: 100, maxHeight: 200)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                        )
+                    ZStack(alignment: .topLeading) {
+                        // Background with iMessage-style appearance
+                        RoundedRectangle(cornerRadius: 18)
+                            .fill(Color(UIColor.systemGray6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18)
+                                    .stroke(Color(UIColor.systemGray4), lineWidth: 0.5)
+                            )
+                        
+                        // Multiline, scrollable TextEditor
+                        TextEditor(text: $editableText)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(Color.clear)
+                            .font(.body)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 140, maxHeight: 240)
+                        
+                        // Placeholder text when empty
+                        if editableText.isEmpty {
+                            Text("Your message will appear here...")
+                                .foregroundColor(Color(UIColor.placeholderText))
+                                .font(.body)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 18)
+                                .allowsHitTesting(false)
+                        }
+                    }
                 }
                 .padding(.horizontal)
                 .padding(.top, 16)
@@ -44,7 +64,7 @@ struct MessageReviewView: View {
                                 ForEach(MessageTone.allCases, id: \.self) { tone in
                                     Button(action: {
                                         Task {
-                                            await viewModel.regenerateWithTone(tone)
+                                            await regenerateWithTone(tone)
                                         }
                                     }) {
                                         VStack(spacing: 8) {
@@ -60,7 +80,7 @@ struct MessageReviewView: View {
                                         .foregroundColor(message.tone == tone ? .white : .primary)
                                         .cornerRadius(12)
                                     }
-                                    .disabled(viewModel.isProcessing)
+                                    .disabled(isRegenerating)
                                 }
                             }
                         }
@@ -77,7 +97,7 @@ struct MessageReviewView: View {
                                 }
                                 .foregroundColor(.blue)
                             }
-                            .disabled(viewModel.isProcessing)
+                            .disabled(isRegenerating)
                             
                             if let customPrompt = message.customPrompt, !customPrompt.isEmpty {
                                 VStack(alignment: .leading, spacing: 8) {
@@ -95,11 +115,11 @@ struct MessageReviewView: View {
                         .padding(.horizontal)
                         
                         // Processing indicator
-                        if viewModel.isProcessing {
+                        if isRegenerating {
                             HStack {
                                 ProgressView()
                                     .scaleEffect(0.8)
-                                Text("Processing...")
+                                Text("Regenerating...")
                                     .font(.caption)
                             }
                             .foregroundColor(.secondary)
@@ -155,8 +175,39 @@ struct MessageReviewView: View {
             editableText = message.cleanedText
         }
         .onChange(of: message.cleanedText) { newValue in
-            // Update editable text when message is regenerated
-            editableText = newValue
+            // Only update editable text when regenerating (to avoid overriding manual edits)
+            if isRegenerating {
+                editableText = newValue
+            }
+        }
+    }
+    
+    // MARK: - Private Methods
+    
+    private func regenerateWithTone(_ tone: MessageTone) async {
+        guard let message = viewModel.currentMessage else { return }
+        
+        await MainActor.run {
+            isRegenerating = true
+        }
+        
+        // Use the MessageFormatter directly to regenerate text
+        let messageFormatter = MessageFormatter(settingsManager: SettingsManager())
+        
+        if let newText = await messageFormatter.regenerateWithTone(
+            message.originalTranscript,
+            tone: tone,
+            customPrompt: message.customPrompt
+        ) {
+            await MainActor.run {
+                editableText = newText
+                viewModel.currentMessage?.cleanedText = newText
+                viewModel.currentMessage?.tone = tone
+            }
+        }
+        
+        await MainActor.run {
+            isRegenerating = false
         }
     }
 }
