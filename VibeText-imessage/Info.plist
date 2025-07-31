@@ -18,6 +18,8 @@
 			<array/>
 			<key>IntentsRestrictedWhileLocked</key>
 			<array/>
+			<key>MSMessagesExtensionStoreIconName</key>
+			<string>iMessage App Icon</string>
 		</dict>
 	</dict>
 </dict>
