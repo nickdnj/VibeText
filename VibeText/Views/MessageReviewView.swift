@@ -76,8 +76,8 @@ struct MessageReviewView: View {
                                         }
                                         .frame(maxWidth: .infinity)
                                         .padding()
-                                        .background(message.tone == tone ? Color.blue : Color.gray.opacity(0.1))
-                                        .foregroundColor(message.tone == tone ? .white : .primary)
+                                        .background(viewModel.currentMessage?.tone == tone ? Color.blue : Color.gray.opacity(0.1))
+                                        .foregroundColor(viewModel.currentMessage?.tone == tone ? .white : .primary)
                                         .cornerRadius(12)
                                     }
                                     .disabled(isRegenerating)
@@ -99,7 +99,7 @@ struct MessageReviewView: View {
                             }
                             .disabled(isRegenerating)
                             
-                            if let customPrompt = message.customPrompt, !customPrompt.isEmpty {
+                            if let customPrompt = viewModel.currentMessage?.customPrompt, !customPrompt.isEmpty {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("Custom instructions:")
                                         .font(.caption)
@@ -174,9 +174,9 @@ struct MessageReviewView: View {
             // Initialize editable text with the current message
             editableText = message.cleanedText
         }
-        .onChange(of: message.cleanedText) { newValue in
-            // Only update editable text when regenerating (to avoid overriding manual edits)
-            if isRegenerating {
+        .onChange(of: viewModel.currentMessage?.cleanedText) { newValue in
+            // Update editable text when the message is regenerated
+            if let newValue = newValue, !newValue.isEmpty {
                 editableText = newValue
             }
         }
@@ -191,20 +191,8 @@ struct MessageReviewView: View {
             isRegenerating = true
         }
         
-        // Use the MessageFormatter directly to regenerate text
-        let messageFormatter = MessageFormatter(settingsManager: SettingsManager())
-        
-        if let newText = await messageFormatter.regenerateWithTone(
-            message.originalTranscript,
-            tone: tone,
-            customPrompt: message.customPrompt
-        ) {
-            await MainActor.run {
-                editableText = newText
-                viewModel.currentMessage?.cleanedText = newText
-                viewModel.currentMessage?.tone = tone
-            }
-        }
+        // Use the ViewModel's regenerateWithTone method instead of creating a new MessageFormatter
+        await viewModel.regenerateWithTone(tone)
         
         await MainActor.run {
             isRegenerating = false

@@ -78,7 +78,12 @@ class VoiceCaptureViewModel: ObservableObject {
     }
     
     func regenerateWithTone(_ tone: MessageTone) async {
-        guard let message = currentMessage else { return }
+        guard let message = currentMessage else { 
+            print("❌ VoiceCaptureViewModel: No current message to regenerate")
+            return 
+        }
+        
+        print("🔄 VoiceCaptureViewModel: Regenerating with tone: \(tone.rawValue)")
         
         await MainActor.run {
             isProcessing = true
@@ -91,12 +96,17 @@ class VoiceCaptureViewModel: ObservableObject {
             customPrompt: message.customPrompt
         ) {
             await MainActor.run {
+                print("✅ VoiceCaptureViewModel: Successfully regenerated text with tone: \(tone.rawValue)")
                 currentMessage?.cleanedText = newText
                 currentMessage?.tone = tone
                 settingsManager.saveLastUsedTone(tone)
+                
+                // Force UI update by triggering objectWillChange
+                objectWillChange.send()
             }
         } else {
             await MainActor.run {
+                print("❌ VoiceCaptureViewModel: Failed to regenerate text with tone: \(tone.rawValue)")
                 errorMessage = messageFormatter.errorMessage ?? "Failed to regenerate text"
             }
         }

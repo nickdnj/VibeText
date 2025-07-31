@@ -1,8 +1,8 @@
 import Foundation
 
 /// Represents a voice message and its various transformations
-struct Message: Identifiable, Codable, Equatable {
-    let id = UUID()
+class Message: Identifiable, Codable, Equatable {
+    var id = UUID()
     let originalTranscript: String
     var cleanedText: String
     var tone: MessageTone
