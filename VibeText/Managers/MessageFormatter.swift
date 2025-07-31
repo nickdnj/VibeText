@@ -69,11 +69,18 @@ class MessageFormatter: ObservableObject {
     }
     
     private func callOpenAI(systemPrompt: String, userPrompt: String) async throws -> String {
+        print("🌐 Main App: Starting OpenAI API call...")
         let apiKey = settingsManager.getCurrentAPIKey()
         
+        print("🌐 Main App: API key length: \(apiKey.count)")
+        print("🌐 Main App: API key starts with: \(String(apiKey.prefix(10)))...")
+        
         guard !apiKey.isEmpty else {
+            print("❌ Main App: No API key configured")
             throw MessageFormatterError.noAPIKey
         }
+        
+        print("✅ Main App: API key found and valid")
         
         let requestBody: [String: Any] = [
             "model": "gpt-4o",
@@ -100,14 +107,19 @@ class MessageFormatter: ObservableObject {
             throw MessageFormatterError.invalidRequest
         }
         
+        print("🌐 Main App: Making network request to OpenAI...")
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
+            print("❌ Main App: Invalid HTTP response")
             throw MessageFormatterError.invalidResponse
         }
         
+        print("🌐 Main App: Received response with status code: \(httpResponse.statusCode)")
+        
         guard httpResponse.statusCode == 200 else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+            print("❌ Main App: API error (status \(httpResponse.statusCode)): \(errorMessage)")
             throw MessageFormatterError.apiError(statusCode: httpResponse.statusCode, message: errorMessage)
         }
         
@@ -117,11 +129,15 @@ class MessageFormatter: ObservableObject {
                   let firstChoice = choices.first,
                   let message = firstChoice["message"] as? [String: Any],
                   let content = message["content"] as? String else {
+                print("❌ Main App: Failed to parse OpenAI response")
                 throw MessageFormatterError.invalidResponse
             }
             
-            return content.trimmingCharacters(in: .whitespacesAndNewlines)
+            let result = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            print("✅ Main App: OpenAI API call successful, response length: \(result.count)")
+            return result
         } catch {
+            print("❌ Main App: JSON parsing error: \(error.localizedDescription)")
             throw MessageFormatterError.invalidResponse
         }
     }

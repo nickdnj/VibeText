@@ -13,7 +13,19 @@ class SettingsManager: ObservableObject {
     // private let sharedUserDefaults = UserDefaults(suiteName: "group.com.d3marco.VibeText.shared")
     private let apiKeyKey = "OpenAIAPIKey"
     private let lastToneKey = "LastUsedTone"
-    private let defaultAPIKey = "sk-your-default-key-here" // Replace with actual default key
+    
+    // Load default API key from Secrets.plist
+    private var defaultAPIKey: String {
+        if let path = Bundle.main.path(forResource: "Secrets", ofType: "plist"),
+           let plist = NSDictionary(contentsOfFile: path),
+           let key = plist["DefaultOpenAIAPIKey"] as? String {
+            print("🔑 Main App: Successfully loaded default API key from Secrets.plist (length: \(key.count))")
+            return key
+        } else {
+            print("❌ Main App: Failed to load default API key from Secrets.plist")
+            return "sk-proj-1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" // Fallback
+        }
+    }
     
     init() {
         loadSettings()
@@ -38,7 +50,10 @@ class SettingsManager: ObservableObject {
     }
     
     func getCurrentAPIKey() -> String {
-        return openAIAPIKey.isEmpty ? defaultAPIKey : openAIAPIKey
+        let key = openAIAPIKey.isEmpty ? defaultAPIKey : openAIAPIKey
+        print("🔑 Main App: getCurrentAPIKey() returning key with length: \(key.count)")
+        print("🔑 Main App: isUsingDefaultKey: \(isUsingDefaultKey)")
+        return key
     }
     
     func resetToDefaultKey() {
@@ -57,10 +72,17 @@ class SettingsManager: ObservableObject {
     // MARK: - Private Methods
     
     private func loadSettings() {
+        print("🔑 Main App: Loading settings...")
+        
         // Load API key from keychain
-        openAIAPIKey = loadAPIKeyFromKeychain()
+        let loadedKey = loadAPIKeyFromKeychain()
+        openAIAPIKey = loadedKey
         // Only treat as default if the key is actually empty
-        isUsingDefaultKey = openAIAPIKey.isEmpty
+        isUsingDefaultKey = loadedKey.isEmpty
+        
+        print("🔑 Main App: Loaded key length: \(loadedKey.count)")
+        print("🔑 Main App: isUsingDefaultKey: \(isUsingDefaultKey)")
+        print("🔑 Main App: getCurrentAPIKey() returns key with length: \(getCurrentAPIKey().count)")
         
         // Load last used tone
         if let toneString = UserDefaults.standard.string(forKey: lastToneKey),
@@ -119,6 +141,7 @@ class SettingsManager: ObservableObject {
         }
         
         print("❌ Main App: Failed to load API key from keychain (status: \(status))")
+        print("🔑 Main App: Will use embedded default key from Secrets.plist")
         return ""
     }
     

@@ -24,10 +24,17 @@ class VoiceCaptureViewModel: ObservableObject {
     // MARK: - Public Methods
     
     func startRecording() {
-        speechManager.startRecording()
+        print("🎙️ VibeText Main App: VoiceCaptureViewModel.startRecording() called")
+        let result = speechManager.startRecording()
+        print("🎙️ VibeText Main App: speechManager.startRecording() returned: \(result)")
+        
+        if !result {
+            errorMessage = "Failed to start recording. Please try again."
+        }
     }
     
     func stopRecording() {
+        print("🛑 VibeText Main App: VoiceCaptureViewModel.stopRecording() called")
         speechManager.stopRecording()
         
         // Start processing transcript when it becomes available
