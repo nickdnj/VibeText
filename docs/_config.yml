@@ -1,0 +1,65 @@
+# Jekyll Configuration for VibeText Legal Documentation
+# This file enables GitHub Pages to properly serve the legal documents
+
+# Site settings
+title: "VibeText Legal"
+description: "Privacy Policy and Terms of Use for VibeText - AI-Powered Voice Messaging"
+url: "" # Will be auto-populated by GitHub Pages
+baseurl: "" # Will be auto-populated by GitHub Pages
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+
+# GitHub Pages specific settings
+github: [metadata]
+
+# Plugins
+plugins:
+  - jekyll-sitemap
+  - jekyll-feed
+
+# Exclude files from processing
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
+
+# Include files that start with underscore
+include:
+  - _config.yml
+
+# Collections and defaults
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+
+# SEO and metadata
+author: "D3Marco, LLC"
+contact_email: "nickd@demarconet.com"
+
+# App-specific metadata
+app:
+  name: "VibeText"
+  description: "AI-Powered Voice Messaging for iMessage"
+  developer: "D3Marco, LLC"
+  contact: "nickd@demarconet.com"
+  last_updated: "2025-07-31"
+
+# Legal document URLs (for reference)
+legal:
+  privacy_policy: "/privacy-policy.html"
+  terms_of_use: "/terms-of-use.html"
+
+# GitHub Pages settings
+safe: true
+source: .
+destination: ./_site
+incremental: false
+lsi: false
+encoding: utf-8
