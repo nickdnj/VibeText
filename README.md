@@ -6,12 +6,10 @@
 
 - **🎙️ Voice Capture**: Tap-to-record with live waveform and on-device transcription using Apple's Speech framework
 - **✨ AI-Powered Cleanup**: Transform rambling thoughts into clear, polished messages
-- **🎭 Tone Transformation**: Instantly reframe your message with AI-powered tone presets:
-  - 🎓 Professional
-  - 👴 Boomer  
-  - 😎 Gen X
-  - 👶 Gen Z
-  - 🎉 Casual
+- **🎭 Tone Transformation**: Instantly reframe your message with 14 AI-powered tone presets:
+  - 🎓 Professional • 👴 Boomer • 😎 Gen X • 👶 Gen Z • 🎉 Casual
+  - 🧠 Millennial • 🇺🇸 Trump • 🎩 Shakespearean • 📱 Corporate Speak
+  - 🧊 Dry/Sarcastic • 🎮 Gamer Mode • 💘 Romantic • 🧘 Zen • 🤖 Robot/AI Literal
 - **💬 Smart Refinement**: Chat with AI to further adjust your message ("shorter," "add warmth," "make more casual," etc.)
 - **📱 iMessage Integration**: Seamless integration as an iMessage app extension
 - **🔒 Privacy-First**: All voice processing is local by default; online AI features are opt-in
@@ -82,46 +80,121 @@ VibeText/
 ├── VibeText/                    # Main iOS app
 │   ├── VibeTextApp.swift       # App entry point
 │   ├── ContentView.swift       # Main content view
+│   ├── Managers/               # Core business logic
+│   │   ├── SpeechManager.swift # Voice capture & transcription (600+ lines)
+│   │   ├── MessageFormatter.swift # OpenAI integration & tone transformation
+│   │   └── SettingsManager.swift # Keychain storage & API key management
+│   ├── Models/                 # Data models
+│   │   └── Message.swift       # Message & 14-tone system definitions
+│   ├── ViewModels/             # MVVM layer
+│   │   └── VoiceCaptureViewModel.swift # Main app business logic
+│   ├── Views/                  # SwiftUI views
+│   │   ├── MessageReviewView.swift # Message editing & tone selection
+│   │   └── SettingsView.swift  # Settings configuration
 │   └── Assets.xcassets/        # App assets
+├── VibeText-imessage/          # iMessage app extension
+│   ├── VibeTextMessageView.swift # Extension UI (streamlined)
+│   ├── SharedManagers.swift   # Duplicated managers for extension isolation
+│   ├── MessagesViewController.swift # iMessage integration controller
+│   └── Secrets.plist          # Default API key (gitignored)
 ├── VibeText.xcodeproj/         # Xcode project
-├── docs/                       # Documentation
+├── docs/                       # Documentation & legal pages
 │   ├── 🎨 VibeText UX Design Overview.md
 │   ├── Product Requirements Document_ VibeText.md
-│   └── Software Architecture Specification_ VibeText.md
-└── README.md                   # This file
+│   ├── Software Architecture Specification_ VibeText.md
+│   ├── privacy-policy.html     # App Store compliance
+│   ├── terms-of-use.html       # Legal terms
+│   └── index.html              # GitHub Pages legal landing
+├── build_and_test.sh          # Automated build & deployment script
+├── VibeText_TestLoop.md       # Comprehensive testing procedures
+└── README.md                  # This file
 ```
 
 ## 🔧 Technical Implementation
 
+### Dual-App Architecture
+
+**Main App Features:**
+- Full voice recording interface with waveform visualization
+- Message review with 14 tone presets and real-time switching
+- Settings management with Keychain storage and Secrets.plist fallback
+- Comprehensive audio session conflict resolution
+- Stand-alone functionality for development and power users
+
+**iMessage Extension Features:**
+- Streamlined voice-to-message interface optimized for iMessage drawer
+- Direct message insertion into iMessage composer via `MSConversation.insertText`
+- Shared codebase via duplicated `SharedManagers.swift` for extension isolation
+- Compact UI optimized for quick workflow
+
 ### Core Components
 
-- **SpeechManager**: Handles voice capture and on-device transcription
-- **MessageFormatter**: Manages OpenAI API interactions
-- **ToneTransformer**: Applies tone presets to messages
-- **SettingsManager**: Handles API key storage and retrieval
+- **SpeechManager**: 600+ lines handling complex audio session management, file recording, format conversion, and robust transcription with interruption recovery
+- **MessageFormatter**: OpenAI API integration with dual processing modes:
+  - **Transcript Cleanup**: Stream-of-consciousness → structured message
+  - **Tone Transformation**: Preserves user edits while applying new tone
+- **SettingsManager**: Keychain-based API key storage with automatic fallback to embedded default key via Secrets.plist
+- **VoiceCaptureViewModel**: Main app business logic with automatic transcript processing
+- **MessageExtensionViewModel**: iMessage extension-specific workflow management
 
-### API Integration
+### Advanced Audio Session Management
 
 ```swift
-// OpenAI API Configuration
-let endpoint = "https://api.openai.com/v1/chat/completions"
-let model = "gpt-4o"
-let headers = ["Authorization": "Bearer \(apiKey)"]
+// Sophisticated audio session handling
+- Dual configuration strategy (primary + fallback)
+- Real-time route change monitoring  
+- TextEditor conflict resolution
+- Format standardization (16kHz mono)
+- Screen sleep prevention during recording
+- 5-minute auto-stop with duration tracking
 ```
 
-### Security
+### OpenAI Integration Architecture
 
-- API keys stored securely in iOS Keychain
-- Voice processing happens on-device
-- Optional online features with user consent
+```swift
+// Dual-mode AI processing
+let endpoint = "https://api.openai.com/v1/chat/completions"
+let model = "gpt-4o"
+
+// Mode 1: Initial transcript cleanup
+systemPrompt: "Clean up stream-of-consciousness transcript..."
+
+// Mode 2: Tone transformation (preserves edits)
+systemPrompt: tone.systemPrompt // 14 sophisticated tone definitions
+userPrompt: "Transform this message: \(editedText)"
+```
+
+### Security & Configuration
+
+- **API Keys**: Secure Keychain storage with Secrets.plist fallback system
+- **Voice Processing**: 100% on-device via Apple Speech Framework
+- **Extension Isolation**: Duplicated managers prevent main app dependencies
+- **Build Automation**: `build_and_test.sh` with device-specific deployment
+- **Testing**: Comprehensive `VibeText_TestLoop.md` procedures
 
 ## 📚 Documentation
 
 See the `docs/` directory for detailed specifications:
 
 - **[🎨 UX Design Overview](docs/🎨%20VibeText%20UX%20Design%20Overview.md)**: Complete user experience flow and design principles
-- **[Product Requirements Document](docs/Product%20Requirements%20Document_%20VibeText.md)**: Functional requirements and user stories
+- **[Product Requirements Document](docs/Product%20Requirements%20Document_%20VibeText.md)**: Functional requirements and user stories  
 - **[Software Architecture Specification](docs/Software%20Architecture%20Specification_%20VibeText.md)**: Technical architecture and implementation details
+
+### Development Documentation
+
+- **[`build_and_test.sh`](build_and_test.sh)**: Automated build, deployment, and testing workflow
+- **[`VibeText_TestLoop.md`](VibeText_TestLoop.md)**: Comprehensive testing procedures and checklists
+- **[Legal Documentation](docs/)**: App Store compliance with privacy policy and terms
+
+### Missing Documentation (Needed)
+
+The following documentation should be created to fully document the implementation:
+
+- **Audio Session Architecture Guide**: 600+ lines of sophisticated audio session management
+- **Extension Code Duplication Strategy**: Why SharedManagers.swift vs App Groups
+- **API Key Management System**: Secrets.plist + Keychain implementation details
+- **TestFlight Distribution Guide**: Preparation and submission procedures
+- **Developer Onboarding Guide**: Setup, build, and contribution workflow
 
 ## 🤝 Contributing
 
@@ -141,23 +214,30 @@ We welcome contributions! Here's how you can help:
 - Test on both simulator and device
 - Update documentation for new features
 
-## 🐛 Known Issues & Roadmap
+## 🚀 Implementation Status & Roadmap
 
 ### Current Status
-- ✅ Basic iOS app structure
-- ✅ Documentation complete
-- 🔄 Voice capture implementation (in progress)
-- 🔄 iMessage extension (planned)
-- 🔄 OpenAI integration (planned)
+- ✅ Complete iOS app structure with full UI
+- ✅ Voice capture with waveform visualization 
+- ✅ On-device speech transcription with robust audio session management
+- ✅ OpenAI GPT-4o integration with dual processing modes
+- ✅ 14-tone transformation system (Professional, Gen Z, Millennial, Trump, etc.)
+- ✅ Message review and editing interface with real-time tone switching
+- ✅ Settings panel with secure Keychain API key management
+- ✅ iMessage app extension with streamlined workflow
+- ✅ Dual-app architecture (Main app + iMessage extension)
+- ✅ Build automation and comprehensive testing procedures
+- 🔄 TestFlight distribution (planned)
 
-### Upcoming Features
-- [ ] Voice recording with waveform visualization
-- [ ] On-device speech transcription
-- [ ] iMessage app extension
-- [ ] OpenAI API integration
-- [ ] Tone preset system
-- [ ] Settings panel with API key management
-- [ ] Message history and favorites
+### Advanced Features Implemented
+- [x] Sophisticated audio session conflict resolution
+- [x] TextEditor integration without recording interruption
+- [x] Custom prompt refinement system
+- [x] Message tone transformation preserving user edits
+- [x] Automated build and deployment scripts
+- [x] 5-minute recording limits with auto-stop
+- [x] Default API key fallback via Secrets.plist
+- [x] Comprehensive interruption handling (calls, route changes)
 
 ## 📄 License
 

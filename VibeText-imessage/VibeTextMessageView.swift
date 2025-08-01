@@ -327,9 +327,10 @@ struct VibeTextMessageView: View {
     private func regenerateWithTone(_ tone: MessageTone) async {
         guard let message = viewModel.currentMessage else { return }
         
-        // Use the messageFormatter to regenerate text
-        if let newText = await messageFormatter.regenerateWithTone(
-            message.originalTranscript,
+        // Use the messageFormatter to transform the current canvas text (including user edits)
+        // This makes the canvas the source of truth instead of the original transcript
+        if let newText = await messageFormatter.transformMessageWithTone(
+            editableMessageText, // Use the current canvas text instead of original transcript
             tone: tone,
             customPrompt: message.customPrompt
         ) {

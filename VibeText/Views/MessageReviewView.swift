@@ -167,7 +167,8 @@ struct MessageReviewView: View {
         .sheet(isPresented: $showCustomPrompt) {
             CustomPromptView(
                 customPrompt: $customPrompt,
-                viewModel: viewModel
+                viewModel: viewModel,
+                editableText: $editableText
             )
         }
         .onAppear {
@@ -204,6 +205,8 @@ struct CustomPromptView: View {
     @Binding var customPrompt: String
     @ObservedObject var viewModel: VoiceCaptureViewModel
     @Environment(\.dismiss) private var dismiss
+    @Binding var editableText: String
+    @State private var isRegenerating = false
     
     var body: some View {
         NavigationView {
@@ -237,6 +240,18 @@ struct CustomPromptView: View {
                             .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                     )
                 
+                // Processing indicator
+                if isRegenerating {
+                    HStack {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Regenerating...")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.secondary)
+                    .padding()
+                }
+                
                 Spacer()
                 
                 HStack {
@@ -249,11 +264,10 @@ struct CustomPromptView: View {
                     
                     Button("Apply & Regenerate") {
                         Task {
-                            await viewModel.regenerateWithCustomPrompt(customPrompt)
-                            dismiss()
+                            await regenerateWithCustomPrompt()
                         }
                     }
-                    .disabled(customPrompt.isEmpty || viewModel.isProcessing)
+                    .disabled(customPrompt.isEmpty || isRegenerating)
                     .foregroundColor(.blue)
                 }
             }
@@ -267,6 +281,36 @@ struct CustomPromptView: View {
                     }
                 }
             }
+        }
+    }
+    
+    // MARK: - Private Methods
+    
+    private func regenerateWithCustomPrompt() async {
+        guard let message = viewModel.currentMessage else { return }
+        
+        await MainActor.run {
+            isRegenerating = true
+        }
+        
+        // Use the MessageFormatter to transform the current canvas text with custom prompt
+        let messageFormatter = MessageFormatter(settingsManager: SettingsManager())
+        
+        if let newText = await messageFormatter.transformMessageWithTone(
+            editableText, // Use the current canvas text as source
+            tone: message.tone,
+            customPrompt: customPrompt
+        ) {
+            await MainActor.run {
+                editableText = newText
+                viewModel.currentMessage?.cleanedText = newText
+                viewModel.currentMessage?.customPrompt = customPrompt
+                dismiss()
+            }
+        }
+        
+        await MainActor.run {
+            isRegenerating = false
         }
     }
 }

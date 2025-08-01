@@ -144,6 +144,35 @@ class VoiceCaptureViewModel: ObservableObject {
         }
     }
     
+    /// Regenerate with custom prompt using the current edited text as source
+    func regenerateWithCustomPromptFromText(_ currentText: String, prompt: String) async {
+        guard let message = currentMessage else { return }
+        
+        await MainActor.run {
+            isProcessing = true
+            errorMessage = nil
+        }
+        
+        if let newText = await messageFormatter.transformMessageWithTone(
+            currentText,
+            tone: message.tone,
+            customPrompt: prompt
+        ) {
+            await MainActor.run {
+                currentMessage?.cleanedText = newText
+                currentMessage?.customPrompt = prompt
+            }
+        } else {
+            await MainActor.run {
+                errorMessage = messageFormatter.errorMessage ?? "Failed to regenerate text"
+            }
+        }
+        
+        await MainActor.run {
+            isProcessing = false
+        }
+    }
+    
     func reset() {
         currentMessage = nil
         showReview = false
