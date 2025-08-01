@@ -109,6 +109,40 @@ xcrun devicectl device install app --device 00008140-000A24EC3C90801C /Users/nic
 - ❌ No visual warning
 - ❌ Doesn't auto-stop
 
+### 6. Offline Mode Error Handling
+**Test Steps:**
+1. Enable airplane mode or disconnect from internet
+2. Start recording and complete a message
+3. Try to process the transcript
+4. Observe error handling behavior
+5. Reconnect to internet and retry
+
+**Expected Results:**
+- ✅ App shows user-friendly error message
+- ✅ No crashes occur during offline mode
+- ✅ Retry button appears for network errors
+- ✅ App remains fully functional after error dismissal
+- ✅ Processing works correctly after reconnecting
+
+**Common Issues:**
+- ❌ App crashes during offline mode
+- ❌ Force unwrap errors in error handling
+- ❌ No retry option for network errors
+- ❌ App becomes unusable after error
+
+### 7. Error Recovery & Retry
+**Test Steps:**
+1. Trigger a network error (offline mode)
+2. Tap "Retry" button
+3. Verify app recovers properly
+4. Test with different error types
+
+**Expected Results:**
+- ✅ Retry functionality works for retryable errors
+- ✅ App state is properly reset after error
+- ✅ Non-retryable errors show appropriate messaging
+- ✅ Error dismissal returns to normal operation
+
 ## 🔄 Test Loop Template
 
 ### Step 1: Pre-Test Setup

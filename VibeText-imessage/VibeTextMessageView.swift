@@ -325,7 +325,10 @@ struct VibeTextMessageView: View {
     // MARK: - Private Methods
     
     private func regenerateWithTone(_ tone: MessageTone) async {
-        guard let message = viewModel.currentMessage else { return }
+        guard let message = viewModel.currentMessage else { 
+            print("❌ VibeTextMessageView: No current message to regenerate")
+            return 
+        }
         
         // Use the messageFormatter to transform the current canvas text (including user edits)
         // This makes the canvas the source of truth instead of the original transcript
@@ -339,6 +342,12 @@ struct VibeTextMessageView: View {
                 viewModel.currentMessage?.cleanedText = newText
                 viewModel.currentMessage?.tone = tone
                 settingsManager.saveLastUsedTone(tone)
+            }
+        } else {
+            // Handle the case where transformation failed
+            await MainActor.run {
+                print("❌ VibeTextMessageView: Failed to transform message with tone: \(tone.rawValue)")
+                // The error will be handled by the view model's error handling
             }
         }
     }

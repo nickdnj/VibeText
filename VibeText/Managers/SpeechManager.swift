@@ -5,13 +5,14 @@ import Combine
 import UIKit
 
 /// Manages voice recording and speech-to-text transcription
-class SpeechManager: NSObject, ObservableObject {
+class SpeechManager: NSObject, ObservableObject, ErrorHandling {
     @Published var isRecording = false
     @Published var transcript = ""
-    @Published var errorMessage: String?
+    @Published var currentError: AppError?
     @Published var authorizationStatus: SFSpeechRecognizerAuthorizationStatus = .notDetermined
     @Published var isTranscribing = false
     @Published var recordingDuration: TimeInterval = 0
+    @Published var isProcessing = false
     
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
     private var isAudioSessionConfigured = false
@@ -48,6 +49,16 @@ class SpeechManager: NSObject, ObservableObject {
         }
     }
     
+    // MARK: - Error Handling
+    
+    func retry() {
+        clearError()
+        // Restart recording if it was interrupted
+        if !isRecording {
+            _ = startRecording()
+        }
+    }
+    
     // MARK: - Authorization
     
     private func requestSpeechAuthorization() {
@@ -68,7 +79,7 @@ class SpeechManager: NSObject, ObservableObject {
                 print("🎙️ VibeText Main App: Microphone permission result: \(granted)")
                 if !granted {
                     print("❌ VibeText Main App: Microphone permission denied")
-                    self?.errorMessage = "Microphone permission is required for voice recording."
+                    ErrorHandler.handle(.microphonePermissionDenied, in: self!)
                 } else {
                     print("✅ VibeText Main App: Microphone permission granted")
                 }
@@ -84,72 +95,93 @@ class SpeechManager: NSObject, ObservableObject {
         print("🎙️ Main App: Audio engine running: \(audioEngine.isRunning)")
         
         // Clear any previous error
-        errorMessage = nil
+        clearError()
         
         guard authorizationStatus == .authorized else {
             print("❌ Main App: Speech recognition not authorized - status: \(authorizationStatus)")
-            if authorizationStatus == .notDetermined {
-                print("🔄 Main App: Requesting speech recognition permission...")
-                requestSpeechAuthorization()
-                return false
-            }
-            errorMessage = "Speech recognition not authorized"
+            ErrorHandler.handle(.speechRecognitionNotAuthorized, in: self)
             return false
         }
         
-        print("✅ Main App: Speech recognition authorized")
-        
-        // Check microphone permission with detailed logging
+        // Check microphone permission
         let audioSession = AVAudioSession.sharedInstance()
         let micPermission = audioSession.recordPermission
-        print("🎙️ Main App: Microphone permission status: \(micPermission)")
-        print("🎙️ Main App: Audio session category: \(audioSession.category)")
-        print("🎙️ Main App: Other audio playing: \(audioSession.isOtherAudioPlaying)")
-        print("🎙️ Main App: Input available: \(audioSession.isInputAvailable)")
+        
+        print("🎙️ Main App: Microphone permission status: \(micPermission.rawValue)")
         
         if micPermission == .undetermined {
-            print("⚠️ Main App: Microphone permission undetermined, requesting...")
-            requestMicrophonePermission()
+            print("🎙️ Main App: Requesting microphone permission...")
+            audioSession.requestRecordPermission { [weak self] granted in
+                DispatchQueue.main.async {
+                    print("🎙️ Main App: Microphone permission result: \(granted)")
+                    if !granted {
+                        print("❌ Main App: Microphone permission denied")
+                        ErrorHandler.handle(.microphonePermissionDenied, in: self!)
+                    } else {
+                        print("✅ Main App: Microphone permission granted")
+                    }
+                }
+            }
             return false
         }
         
         guard micPermission == .granted else {
-            print("❌ Main App: Microphone permission not granted")
-            errorMessage = "Microphone permission required"
+            print("❌ Main App: Microphone permission denied")
+            ErrorHandler.handle(.microphonePermissionDenied, in: self)
             return false
         }
         
-        print("✅ Main App: Microphone permission granted")
-        
-        // Configure audio session with detailed logging
-        print("🎙️ Main App: Configuring audio session...")
-        guard configureAudioSession() else {
-            print("❌ Main App: Failed to configure audio session")
-            errorMessage = "Failed to configure audio session"
+        // Configure audio session
+        do {
+            try audioSession.setCategory(.record, mode: .default, options: [])
+            try audioSession.setActive(true, options: [])
+            isAudioSessionConfigured = true
+            print("✅ Main App: Audio session configured successfully")
+        } catch {
+            print("❌ Main App: Failed to configure audio session: \(error.localizedDescription)")
+            ErrorHandler.handle(.audioSessionConfigurationFailed, in: self)
             return false
         }
         
-        print("✅ Main App: Audio session configured successfully")
-        
-        // Start actual recording
-        print("🎙️ Main App: Starting audio recording...")
-        if startAudioRecording() {
-            print("✅ Main App: Audio recording engine started")
-            isRecording = true
-            transcript = ""
-            errorMessage = nil
-            startRecordingTimer()
+        // Start recording
+        do {
+            clearError()
             
-            // Keep screen awake during recording
-            DispatchQueue.main.async {
-                UIApplication.shared.isIdleTimerDisabled = true
+            // Configure audio engine for recording
+            let inputNode = audioEngine.inputNode
+            let recordingFormat = inputNode.outputFormat(forBus: 0)
+            
+            // Create recording URL
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let audioFilename = documentsPath.appendingPathComponent("recording.wav")
+            recordingURL = audioFilename
+            
+            // Create audio file
+            audioFile = try AVAudioFile(forWriting: audioFilename, settings: recordingFormat.settings)
+            
+            // Install tap on input node
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+                do {
+                    try self?.audioFile?.write(from: buffer)
+                } catch {
+                    print("❌ Failed to write audio buffer: \(error.localizedDescription)")
+                }
             }
             
-            print("✅ Main App: === Recording Started Successfully ===")
+            // Start audio engine
+            audioEngine.prepare()
+            try audioEngine.start()
+            
+            // Start recording timer
+            startRecordingTimer()
+            
+            isRecording = true
+            print("✅ Main App: Recording started successfully")
             return true
-        } else {
-            print("❌ Main App: Failed to start audio recording engine")
-            errorMessage = "Failed to start recording"
+            
+        } catch {
+            print("❌ Main App: Failed to start recording: \(error.localizedDescription)")
+            ErrorHandler.handle(.recordingFailed, in: self)
             return false
         }
     }
@@ -297,7 +329,7 @@ class SpeechManager: NSObject, ObservableObject {
         guard validateAudioFile(audioURL) else {
             print("❌ Audio file validation failed")
             DispatchQueue.main.async {
-                self.errorMessage = "Invalid audio file - no speech detected"
+                ErrorHandler.handle(.transcriptionFailed, in: self)
             }
             return
         }
@@ -318,13 +350,13 @@ class SpeechManager: NSObject, ObservableObject {
                 
                 if let error = error {
                     print("❌ Recognition error: \(error)")
-                    self?.errorMessage = "Transcription failed: \(error.localizedDescription)"
+                    ErrorHandler.handle(.transcriptionFailed, in: self!)
                     return
                 }
                 
                 guard let result = result else {
                     print("❌ No recognition result")
-                    self?.errorMessage = "Transcription failed: no result"
+                    ErrorHandler.handle(.transcriptionFailed, in: self!)
                     return
                 }
                 
@@ -333,11 +365,11 @@ class SpeechManager: NSObject, ObservableObject {
                     print("✅ Final transcription: '\(transcribedText)'")
                     
                     if transcribedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        self?.errorMessage = "Transcription failed: no speech detected"
+                        ErrorHandler.handle(.transcriptionFailed, in: self!)
                         print("❌ Empty transcription result")
                     } else {
                         self?.transcript = transcribedText
-                        self?.errorMessage = nil
+                        self?.clearError()
                         print("✅ Transcription successful")
                     }
                 }
@@ -508,10 +540,10 @@ class SpeechManager: NSObject, ObservableObject {
         
         switch type {
         case .began:
-            print("🔇 Audio session interruption began")
+            print("🔊 Audio session interruption began")
             if isRecording {
                 stopRecording()
-                errorMessage = "Recording interrupted"
+                ErrorHandler.handle(.audioSessionInterrupted, in: self)
             }
         case .ended:
             print("🔊 Audio session interruption ended")
@@ -573,10 +605,10 @@ class SpeechManager: NSObject, ObservableObject {
                 // Try to reset and reconfigure
                 if self.resetAudioSession() && self.configureAudioSession() {
                     print("✅ Audio session conflict resolved")
-                    self.errorMessage = "Audio session recovered. You can try recording again."
+                    self.clearError()
                 } else {
                     print("❌ Could not recover from audio session conflict")
-                    self.errorMessage = "Audio session conflict. Please restart the app."
+                    ErrorHandler.handle(.audioSessionConfigurationFailed, in: self)
                 }
             }
         }
@@ -594,7 +626,7 @@ class SpeechManager: NSObject, ObservableObject {
     
     func clearTranscript() {
         transcript = ""
-        errorMessage = nil
+        clearError()
     }
 }
 
@@ -604,7 +636,7 @@ extension SpeechManager: SFSpeechRecognizerDelegate {
     func speechRecognizer(_ speechRecognizer: SFSpeechRecognizer, availabilityDidChange available: Bool) {
         DispatchQueue.main.async {
             if !available {
-                self.errorMessage = "Speech recognition temporarily unavailable"
+                ErrorHandler.handle(.speechRecognitionNotAuthorized, in: self)
             }
         }
     }

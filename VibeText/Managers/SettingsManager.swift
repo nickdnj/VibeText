@@ -96,12 +96,18 @@ class SettingsManager: ObservableObject {
     private func saveAPIKeyToKeychain(_ key: String) {
         print("🔑 Main App: Saving API key to standard keychain...")
         
+        // Validate key data can be converted to UTF8
+        guard let keyData = key.data(using: .utf8) else {
+            print("❌ Main App: Failed to convert API key to UTF8 data")
+            return
+        }
+        
         // Standard keychain save (no App Groups for now)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
             kSecAttrAccount as String: apiKeyKey,
-            kSecValueData as String: key.data(using: .utf8)!
+            kSecValueData as String: keyData
         ]
         
         print("🔑 Main App: Using standard keychain storage")

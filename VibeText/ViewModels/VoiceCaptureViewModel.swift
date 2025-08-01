@@ -2,11 +2,11 @@ import Foundation
 import Combine
 
 /// ViewModel for the voice capture screen
-class VoiceCaptureViewModel: ObservableObject {
+class VoiceCaptureViewModel: ObservableObject, ErrorHandling {
     @Published var currentMessage: Message?
     @Published var isProcessing = false
     @Published var showReview = false
-    @Published var errorMessage: String?
+    @Published var currentError: AppError?
     
     private let speechManager: SpeechManager
     private let messageFormatter: MessageFormatter
@@ -25,11 +25,12 @@ class VoiceCaptureViewModel: ObservableObject {
     
     func startRecording() {
         print("🎙️ VibeText Main App: VoiceCaptureViewModel.startRecording() called")
+        clearError()
         let result = speechManager.startRecording()
         print("🎙️ VibeText Main App: speechManager.startRecording() returned: \(result)")
         
         if !result {
-            errorMessage = "Failed to start recording. Please try again."
+            ErrorHandler.handle(.recordingFailed, in: self)
         }
     }
     
@@ -43,13 +44,13 @@ class VoiceCaptureViewModel: ObservableObject {
     
     func processTranscript() async {
         guard !speechManager.transcript.isEmpty else {
-            errorMessage = "No transcript to process"
+            ErrorHandler.handle(.unknownError("No transcript to process"), in: self)
             return
         }
         
         await MainActor.run {
             isProcessing = true
-            errorMessage = nil
+            clearError()
         }
         
         let tone = settingsManager.lastUsedTone
@@ -65,15 +66,13 @@ class VoiceCaptureViewModel: ObservableObject {
                     tone: tone
                 )
                 showReview = true
+                clearError()
             }
         } else {
+            // Error is already set by MessageFormatter
             await MainActor.run {
-                errorMessage = messageFormatter.errorMessage ?? "Failed to process transcript"
+                isProcessing = false
             }
-        }
-        
-        await MainActor.run {
-            isProcessing = false
         }
     }
     
@@ -87,7 +86,7 @@ class VoiceCaptureViewModel: ObservableObject {
         
         await MainActor.run {
             isProcessing = true
-            errorMessage = nil
+            clearError()
         }
         
         if let newText = await messageFormatter.regenerateWithTone(
@@ -105,9 +104,9 @@ class VoiceCaptureViewModel: ObservableObject {
                 objectWillChange.send()
             }
         } else {
+            // Error is already set by MessageFormatter
             await MainActor.run {
                 print("❌ VoiceCaptureViewModel: Failed to regenerate text with tone: \(tone.rawValue)")
-                errorMessage = messageFormatter.errorMessage ?? "Failed to regenerate text"
             }
         }
         
@@ -121,7 +120,7 @@ class VoiceCaptureViewModel: ObservableObject {
         
         await MainActor.run {
             isProcessing = true
-            errorMessage = nil
+            clearError()
         }
         
         if let newText = await messageFormatter.processTranscript(
@@ -132,15 +131,13 @@ class VoiceCaptureViewModel: ObservableObject {
             await MainActor.run {
                 currentMessage?.cleanedText = newText
                 currentMessage?.customPrompt = prompt
+                clearError()
             }
         } else {
+            // Error is already set by MessageFormatter
             await MainActor.run {
-                errorMessage = messageFormatter.errorMessage ?? "Failed to regenerate text"
+                isProcessing = false
             }
-        }
-        
-        await MainActor.run {
-            isProcessing = false
         }
     }
     
@@ -150,7 +147,7 @@ class VoiceCaptureViewModel: ObservableObject {
         
         await MainActor.run {
             isProcessing = true
-            errorMessage = nil
+            clearError()
         }
         
         if let newText = await messageFormatter.transformMessageWithTone(
@@ -161,22 +158,20 @@ class VoiceCaptureViewModel: ObservableObject {
             await MainActor.run {
                 currentMessage?.cleanedText = newText
                 currentMessage?.customPrompt = prompt
+                clearError()
             }
         } else {
+            // Error is already set by MessageFormatter
             await MainActor.run {
-                errorMessage = messageFormatter.errorMessage ?? "Failed to regenerate text"
+                isProcessing = false
             }
-        }
-        
-        await MainActor.run {
-            isProcessing = false
         }
     }
     
     func reset() {
         currentMessage = nil
         showReview = false
-        errorMessage = nil
+        clearError()
         speechManager.clearTranscript()
     }
     
@@ -188,9 +183,29 @@ class VoiceCaptureViewModel: ObservableObject {
     
     private func setupBindings() {
         // Monitor speech manager errors
-        speechManager.$errorMessage
+        speechManager.$currentError
             .compactMap { $0 }
-            .assign(to: \.errorMessage, on: self)
+            .sink { [weak self] error in
+                print("❌ VoiceCaptureViewModel: Speech manager error: \(error.localizedDescription)")
+                guard let self = self else {
+                    print("❌ VoiceCaptureViewModel: Self is nil, cannot handle speech manager error")
+                    return
+                }
+                ErrorHandler.handle(error, in: self)
+            }
+            .store(in: &cancellables)
+        
+        // Monitor message formatter errors
+        messageFormatter.$currentError
+            .compactMap { $0 }
+            .sink { [weak self] error in
+                print("❌ VoiceCaptureViewModel: Message formatter error: \(error.localizedDescription)")
+                guard let self = self else {
+                    print("❌ VoiceCaptureViewModel: Self is nil, cannot handle message formatter error")
+                    return
+                }
+                ErrorHandler.handle(error, in: self)
+            }
             .store(in: &cancellables)
         
         // Monitor transcript changes and automatically process when transcription completes
@@ -207,5 +222,24 @@ class VoiceCaptureViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+    }
+    
+    // MARK: - Error Handling
+    
+    func retry() {
+        clearError()
+        // Retry the last operation based on current state
+        if isProcessing {
+            // If we were processing, try again
+            Task {
+                await processTranscript()
+            }
+        } else if speechManager.isRecording {
+            // If we were recording, restart recording
+            startRecording()
+        } else {
+            // Otherwise, start a new recording
+            startRecording()
+        }
     }
 } 

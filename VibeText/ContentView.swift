@@ -12,6 +12,7 @@ struct ContentView: View {
     @StateObject private var speechManager = SpeechManager()
     @StateObject private var messageFormatter: MessageFormatter
     @StateObject private var voiceCaptureViewModel: VoiceCaptureViewModel
+    @State private var showSettings = false
     
     init() {
         let settings = SettingsManager()
@@ -139,8 +140,8 @@ struct ContentView: View {
                 }
                 
                 // Error Display
-                if let errorMessage = voiceCaptureViewModel.errorMessage {
-                    Text(errorMessage)
+                if let error = voiceCaptureViewModel.currentError {
+                    Text(error.localizedDescription)
                         .foregroundColor(.red)
                         .padding()
                         .background(Color.red.opacity(0.1))
@@ -170,6 +171,12 @@ struct ContentView: View {
                 )
             }
         }
+        .errorOverlay(
+            error: $voiceCaptureViewModel.currentError,
+            onRetry: {
+                voiceCaptureViewModel.retry()
+            }
+        )
     }
     
     // MARK: - Computed Properties

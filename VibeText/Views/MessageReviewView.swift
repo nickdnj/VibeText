@@ -186,7 +186,10 @@ struct MessageReviewView: View {
     // MARK: - Private Methods
     
     private func regenerateWithTone(_ tone: MessageTone) async {
-        guard let message = viewModel.currentMessage else { return }
+        guard let message = viewModel.currentMessage else { 
+            print("❌ MessageReviewView: No current message to regenerate")
+            return 
+        }
         
         await MainActor.run {
             isRegenerating = true
@@ -287,7 +290,10 @@ struct CustomPromptView: View {
     // MARK: - Private Methods
     
     private func regenerateWithCustomPrompt() async {
-        guard let message = viewModel.currentMessage else { return }
+        guard let message = viewModel.currentMessage else { 
+            print("❌ CustomPromptView: No current message to regenerate")
+            return 
+        }
         
         await MainActor.run {
             isRegenerating = true
@@ -306,6 +312,12 @@ struct CustomPromptView: View {
                 viewModel.currentMessage?.cleanedText = newText
                 viewModel.currentMessage?.customPrompt = customPrompt
                 dismiss()
+            }
+        } else {
+            // Handle the case where transformation failed
+            await MainActor.run {
+                print("❌ CustomPromptView: Failed to transform message with custom prompt")
+                // Don't dismiss - let user see the error and retry
             }
         }
         
