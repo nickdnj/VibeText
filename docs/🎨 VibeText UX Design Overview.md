@@ -1,10 +1,16 @@
 ## **🎨 VibeText UX Design Overview**
 
-### **💬 Entry Point: iMessage App Drawer**
+### **💬 Dual Entry Points**
 
-* User taps the **VibeText icon** inside a message thread.
+**Main App Launch:**
+* User opens VibeText app directly from home screen
+* Full-featured interface for power users and development
+* Complete settings management and comprehensive message editing
 
-* A minimal panel slides up, not taking over the whole screen.
+**iMessage App Drawer:**
+* User taps the **VibeText icon** inside a message thread
+* Streamlined panel optimized for quick voice-to-message workflow
+* Direct message insertion into iMessage composer
 
 ---
 
@@ -42,17 +48,13 @@
 
 * “Here’s your message:” with AI output.
 
-* **Tone Selector** (horizontal pill buttons):
+* **Tone Selector** (grid layout):
 
-  * 🎓 Professional
+  * 🎓 Professional • 👴 Boomer • 😎 Gen X • 👶 Gen Z • 🎉 Casual
 
-  * 👴 Boomer
+  * 🧠 Millennial • 🇺🇸 Trump • 🎩 Shakespearean • 📱 Corporate Speak
 
-  * 😎 Gen X
-
-  * 👶 Gen Z
-
-  * 🎉 Casual
+  * 🧊 Dry/Sarcastic • 🎮 Gamer Mode • 💘 Romantic • 🧘 Zen • 🤖 Robot/AI Literal
 
 * **Regenerate** and **Edit** buttons.
 
@@ -86,7 +88,7 @@
 
 ---
 
-## **4\. 📤 Insert into iMessage**
+## **4\. 📤 Message Completion (Dual-App Support)**
 
 **Purpose**: Final step before sending.
 
@@ -126,11 +128,19 @@
 
 * **Frictionless**: No need to type unless refining.
 
-* **Private**: Speech is processed on-device.
+* **Private**: Speech is processed on-device with no storage.
 
-* **Fast**: Output appears in seconds.
+* **Fast**: Output appears in seconds with dual AI processing modes.
 
-* **Fun**: Tone shift adds personality.
+* **Fun**: 14 diverse tone options add creative personality.
 
 * **Familiar**: iMessage style—blends right in.
+
+* **Robust**: Advanced audio session management handles interruptions and UI conflicts.
+
+* **Flexible**: Dual-app architecture serves different use cases.
+
+* **Intelligent**: Dual AI processing preserves user intent while enabling tone transformation.
+
+* **Developer-Friendly**: Comprehensive build automation and test procedures.
 

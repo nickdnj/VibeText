@@ -38,6 +38,16 @@ VibeText is an iPhone app extension for iMessage that helps users effortlessly c
 
 * **Default API Key Fallback (MVP Testing)**: For early testing builds, the app should include a built-in OpenAI API key that is used by default unless the user overrides it via the settings panel. This is to simplify testing and feedback collection while preserving optional configurability.
 
+* **Dual-App Architecture**: Complete main app and streamlined iMessage extension serving different use cases with shared business logic.
+
+* **Extended Tone System**: 14 sophisticated tone presets (beyond original 5) including Millennial, Trump, Shakespearean, Corporate Speak, Dry/Sarcastic, Gamer Mode, Romantic, Zen, and Robot/AI Literal.
+
+* **Advanced Audio Session Management**: Robust handling of interruptions, route changes, TextEditor conflicts, format standardization, and 5-minute auto-stop limits.
+
+* **Dual AI Processing Modes**: Transcript cleanup for initial processing and tone transformation that preserves user edits.
+
+* **Build & Test Automation**: Comprehensive build scripts and test procedures for reliable development workflow.
+
 ---
 
 ### **4\. User Stories**

@@ -2,21 +2,23 @@
 
 ### **System Design**
 
-* **App Type**: Native iOS app with iMessage extension
+* **App Type**: Dual iOS architecture - Main app + iMessage extension
 
 * **Components**:
 
-  * iOS Main App (Settings & Permissions)
+  * iOS Main App (Full featured interface, settings, development)
 
-  * iMessage Extension UI (Main interaction point)
+  * iMessage Extension (Streamlined voice-to-message workflow)
 
-  * Voice-to-Text Transcriber (on-device)
+  * Shared Business Logic (Duplicated managers for extension isolation)
 
-  * AI Processing Layer (remote OpenAI integration)
+  * Voice-to-Text Transcriber (on-device, robust audio session handling)
 
-  * Tone Selector and Prompt Modifier
+  * AI Processing Layer (OpenAI integration with dual prompt strategies)
 
-  * Settings Interface with API Key Management
+  * Tone Transformation System (14 preset tones with custom prompts)
+
+  * Secure Settings Interface (Keychain + default API key fallback)
 
 ---
 
@@ -28,13 +30,15 @@
 
 * **Modularization**:
 
-  * `SpeechManager` for voice capture & transcription
+  * `SpeechManager` for voice capture, audio session management & transcription
 
-  * `MessageFormatter` for API interaction
-
-  * `ToneTransformer` for tone style application
+  * `MessageFormatter` for OpenAI API interaction AND tone transformation
 
   * `SettingsManager` for storing and retrieving the OpenAI API key
+
+  * `VoiceCaptureViewModel` for main app business logic
+
+  * `MessageExtensionViewModel` for iMessage extension logic
 
 ---
 
@@ -50,19 +54,21 @@
 
 ### **Data Flow**
 
-1. User initiates recording in iMessage extension
+**Main App Flow:**
+1. User initiates recording in main app interface
+2. `SpeechManager` performs robust on-device transcription with audio session handling
+3. Transcript auto-triggers `MessageFormatter` processing with cleanup prompts
+4. AI cleanup produces initial message with selected tone
+5. User reviews in `MessageReviewView` with full editing capabilities
+6. Optional tone changes trigger `transformMessageWithTone` (preserves edits)
+7. Final message copied to clipboard or shared
 
-2. `SpeechManager` performs on-device transcription
-
-3. Transcript is passed to `MessageFormatter` with API key from `SettingsManager`
-
-4. Response from OpenAI includes cleaned-up base message
-
-5. User selects tone \-\> triggers `ToneTransformer` to regenerate message
-
-6. User optionally adds prompt instructions \-\> modified prompt sent again to OpenAI
-
-7. Final message appears in UI \-\> user taps to insert into iMessage composer
+**iMessage Extension Flow:**
+1. User opens VibeText from iMessage app drawer
+2. Streamlined recording interface with `SharedManagers`
+3. Direct tone selection and message review in compact UI
+4. Message inserted directly into iMessage composer via `MSConversation.insertText`
+5. User sends from iMessage normally
 
 ---
 
@@ -98,17 +104,15 @@
 
 ### **Route Design**
 
-* iOS app has the following logical views:
+**Main App Navigation:**
+- `/` – ContentView with voice capture interface
+- `/settings` – SettingsView for API key and configuration  
+- `/review` – MessageReviewView (modal) for message editing and tone selection
 
-  * `/` – App launcher or Settings
-
-  * `/settings` – API Key input and configuration
-
-  * `/extension` – iMessage extension entry point
-
-  * `/compose` – Voice-to-message interface
-
-  * `/review` – View and edit AI message
+**iMessage Extension Navigation:**
+- `/extension` – VibeTextMessageView entry point
+- Embedded tone selection and message editing
+- Direct integration with iMessage composer
 
 ---
 
@@ -120,20 +124,37 @@
 
 * **Model**: `gpt-4o`
 
-* **Request Body**:
+* **Dual Processing Modes**:
 
+**Mode 1: Transcript Cleanup**
 ```json
 {
   "model": "gpt-4o",
   "messages": [
     {"role": "system", "content": "You are an assistant that reformats text messages."},
-    {"role": "user", "content": "<transcript and optional prompt>"}
-  ]
+    {"role": "user", "content": "Clean up this transcript: <raw_transcript>"}
+  ],
+  "max_tokens": 500,
+  "temperature": 0.7
 }
 ```
 
-*   
-  **Response**: JSON with cleaned or tone-adapted text
+**Mode 2: Tone Transformation**
+```json
+{
+  "model": "gpt-4o", 
+  "messages": [
+    {"role": "system", "content": "<tone_specific_system_prompt>"},
+    {"role": "user", "content": "Transform this message: <edited_text>"}
+  ],
+  "max_tokens": 500,
+  "temperature": 0.7
+}
+```
+
+* **Response**: JSON with cleaned or tone-adapted text
+
+* **Error Handling**: Keychain API key retrieval with Secrets.plist fallback
 
 ---
 
@@ -143,11 +164,13 @@
 
 * **Local Schema** (UserDefaults & Keychain):
 
-  * `user_api_key: String?`
+  * `user_api_key: String?` (Keychain)
 
-  * `last_used_tone: String`
+  * `last_used_tone: String` (UserDefaults)
 
-  * `recent_messages: [String]` (optional feature)
+  * **Note**: No message history persistence in current implementation
+
+  * All processing is ephemeral for privacy
 
 ---
 
@@ -157,23 +180,35 @@
 
 * **Repo Structure**:
 
-  * `MainApp/` – iOS app source
+  * `VibeText/` – Main iOS app source with full managers
 
-  * `MessageExtension/` – iMessage UI components
+  * `VibeText-imessage/` – iMessage extension with duplicated managers
 
-  * `Shared/` – Common utilities and models
+  * `docs/` – Comprehensive documentation including legal pages
 
-  * `Config/` – `.xcconfig` files for managing keys and environment variables
+  * `build_and_test.sh` – Automated build, deploy, and test workflow
 
-* **Environment Handling**:
+  * `VibeText_TestLoop.md` – Detailed testing procedures and checklists
 
-  * Use `.gitignore` to exclude sensitive files like `Secrets.plist`
+* **Configuration Management**:
 
-  * Provide `Secrets.sample.plist` for contributors
+  * `Secrets.plist` for embedded default API keys (gitignored)
 
-* **Branching Strategy**: Feature branches merged to `main` via pull requests
+  * Keychain for secure user API key storage
 
-* **CI/CD (Future)**: Optional integration with GitHub Actions for build and test workflows
+  * No `.xcconfig` files - direct plist configuration
+
+  * Automated device targeting via hardcoded device ID in build script
+
+* **Development Workflow**:
+
+  * Feature branches merged to `main` via pull requests
+
+  * `build_and_test.sh` automates build and device deployment
+
+  * Comprehensive test scenarios in `VibeText_TestLoop.md`
+
+  * No CI/CD currently - manual testing with iPhone 16 target device
 
 ---
 
