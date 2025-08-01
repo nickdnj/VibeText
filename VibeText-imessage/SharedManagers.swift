@@ -261,6 +261,37 @@ class MessageFormatter: ObservableObject {
         return await processTranscript(transcript, tone: tone, customPrompt: customPrompt)
     }
     
+    /// Transform an already-processed message text with a new tone
+    /// This is used when the user has edited the message and wants to apply a different tone
+    func transformMessageWithTone(_ messageText: String, tone: MessageTone, customPrompt: String? = nil) async -> String? {
+        await MainActor.run {
+            isProcessing = true
+            errorMessage = nil
+        }
+        
+        defer {
+            Task { @MainActor in
+                isProcessing = false
+            }
+        }
+        
+        let userPrompt = buildToneTransformationPrompt(messageText: messageText, customPrompt: customPrompt)
+        
+        do {
+            let response = try await callOpenAI(
+                systemPrompt: tone.systemPrompt,
+                userPrompt: userPrompt
+            )
+            
+            return response
+        } catch {
+            await MainActor.run {
+                errorMessage = "Failed to transform text: \(error.localizedDescription)"
+            }
+            return nil
+        }
+    }
+    
     // MARK: - Private Methods
     
     private func buildUserPrompt(transcript: String, customPrompt: String?) -> String {
@@ -272,6 +303,24 @@ class MessageFormatter: ObservableObject {
         Do not include any commentary—only return the clean, structured message.
 
         Transcript: "\(transcript)"
+        """
+        
+        if let customPrompt = customPrompt, !customPrompt.isEmpty {
+            prompt += "\n\nAdditional instructions: \(customPrompt)"
+        }
+        
+        return prompt
+    }
+    
+    private func buildToneTransformationPrompt(messageText: String, customPrompt: String?) -> String {
+        var prompt = """
+        You're given a message that the user has already crafted and potentially edited. Your task is to transform this message to match the requested tone while preserving the user's specific content, names, details, and intent.
+        
+        Do not treat this as a rough transcript to clean up - this is already a complete message that just needs tone adjustment. Preserve all specific information the user has included.
+        
+        Do not include any commentary—only return the message with the new tone applied.
+        
+        Message to transform: "\(messageText)"
         """
         
         if let customPrompt = customPrompt, !customPrompt.isEmpty {
