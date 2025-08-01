@@ -120,7 +120,26 @@ class SettingsManager: ObservableObject {
     // private let sharedUserDefaults = UserDefaults(suiteName: "group.com.d3marco.VibeText.shared")
     private let apiKeyKey = "OpenAIAPIKey"
     private let lastToneKey = "LastUsedTone"
-    private let defaultAPIKey = "sk-extension-no-api-key-found" // Fallback when keychain fails
+    // Load default API key from Secrets.plist
+    private var defaultAPIKey: String {
+        // Try multiple bundle approaches for extension compatibility
+        let bundlesToTry = [
+            Bundle.main,
+            Bundle(for: MessagesViewController.self)
+        ]
+        
+        for bundle in bundlesToTry {
+            if let path = bundle.path(forResource: "Secrets", ofType: "plist"),
+               let plist = NSDictionary(contentsOfFile: path),
+               let key = plist["DefaultOpenAIAPIKey"] as? String {
+                NSLog("🔑 Extension: Successfully loaded default API key from Secrets.plist via %@ (length: %d)", bundle.bundleIdentifier ?? "unknown", key.count)
+                return key
+            }
+        }
+        
+        NSLog("❌ Extension: Failed to load default API key from Secrets.plist from any bundle")
+        return "sk-proj-1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" // Fallback
+    }
     
     init() {
         loadSettings()
@@ -144,7 +163,10 @@ class SettingsManager: ObservableObject {
     }
     
     func getCurrentAPIKey() -> String {
-        return openAIAPIKey.isEmpty ? defaultAPIKey : openAIAPIKey
+        let key = openAIAPIKey.isEmpty ? defaultAPIKey : openAIAPIKey
+        NSLog("🔑 Extension: getCurrentAPIKey() returning key with length: %d", key.count)
+        NSLog("🔑 Extension: isUsingDefaultKey: %@", isUsingDefaultKey ? "true" : "false")
+        return key
     }
     
     func resetToDefaultKey() {
@@ -177,6 +199,11 @@ class SettingsManager: ObservableObject {
         
         NSLog("🔑 Extension: isUsingDefaultKey: %@", isUsingDefaultKey ? "true" : "false")
         NSLog("🔑 Extension: getCurrentAPIKey() returns key with length: %d", getCurrentAPIKey().count)
+        
+        // Debug: Test Secrets.plist access
+        NSLog("🔍 Extension: Testing Secrets.plist access...")
+        let testKey = defaultAPIKey
+        NSLog("🔍 Extension: defaultAPIKey length: %d", testKey.count)
         
         // Load last used tone
         if let toneRawValue = UserDefaults.standard.string(forKey: lastToneKey),
