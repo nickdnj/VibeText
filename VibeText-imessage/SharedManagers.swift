@@ -112,6 +112,7 @@ enum MessageTone: String, CaseIterable, Codable {
 class SettingsManager: ObservableObject {
     @Published var openAIAPIKey: String = ""
     @Published var lastUsedTone: MessageTone = .casual
+    @Published var defaultTone: MessageTone = .casual
     @Published var isUsingDefaultKey: Bool = true
     
     private let keychainService = "com.d3marco.VibeText"
@@ -120,6 +121,7 @@ class SettingsManager: ObservableObject {
     // private let sharedUserDefaults = UserDefaults(suiteName: "group.com.d3marco.VibeText.shared")
     private let apiKeyKey = "OpenAIAPIKey"
     private let lastToneKey = "LastUsedTone"
+    private let defaultToneKey = "DefaultTone"
     // Load default API key from Secrets.plist
     private var defaultAPIKey: String {
         // Try multiple bundle approaches for extension compatibility
@@ -182,6 +184,12 @@ class SettingsManager: ObservableObject {
         UserDefaults.standard.set(tone.rawValue, forKey: lastToneKey)
     }
     
+    func saveDefaultTone(_ tone: MessageTone) {
+        defaultTone = tone
+        UserDefaults.standard.set(tone.rawValue, forKey: defaultToneKey)
+        NSLog("🎵 Extension: Saved default tone: %@", tone.rawValue)
+    }
+    
     // MARK: - Private Methods
     
     private func loadSettings() {
@@ -209,6 +217,18 @@ class SettingsManager: ObservableObject {
         if let toneRawValue = UserDefaults.standard.string(forKey: lastToneKey),
            let tone = MessageTone(rawValue: toneRawValue) {
             lastUsedTone = tone
+        }
+        
+        // Load default tone
+        if let defaultToneString = UserDefaults.standard.string(forKey: defaultToneKey),
+           let tone = MessageTone(rawValue: defaultToneString) {
+            defaultTone = tone
+            NSLog("🎵 Extension: Loaded default tone: %@", tone.rawValue)
+        } else {
+            // Set default to casual if not previously configured
+            defaultTone = .casual
+            saveDefaultTone(.casual)
+            NSLog("🎵 Extension: Initialized default tone to casual")
         }
     }
     

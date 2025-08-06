@@ -78,11 +78,40 @@ struct SettingsView: View {
                     }
                 }
                 
+                Section("Voice & Tone Settings") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Default Voice Tone")
+                            .font(.headline)
+                        
+                        Text("This tone will be used for the first message in each session. Subsequent messages will use the last selected tone unless changed.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Picker("Default Tone", selection: $settingsManager.defaultTone) {
+                            ForEach(MessageTone.allCases, id: \.self) { tone in
+                                Text(tone.displayName)
+                                    .tag(tone)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .onChange(of: settingsManager.defaultTone) { _, newTone in
+                            settingsManager.saveDefaultTone(newTone)
+                        }
+                    }
+                }
+                
                 Section("App Information") {
                     HStack {
                         Text("Version")
                         Spacer()
                         Text("1.0.0")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Default Tone")
+                        Spacer()
+                        Text(settingsManager.defaultTone.displayName)
                             .foregroundColor(.secondary)
                     }
                     

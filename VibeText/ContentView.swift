@@ -120,25 +120,6 @@ struct ContentView: View {
                     }
                 }
                 
-                // Transcript Display
-                if !speechManager.transcript.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Transcript:")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        ScrollView {
-                            Text(speechManager.transcript)
-                                .padding()
-                                .background(Color.gray.opacity(0.1))
-                                .cornerRadius(8)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .frame(maxHeight: 200) // Limit height to prevent UI overflow
-                    }
-                    .padding(.horizontal)
-                }
-                
                 // Error Display
                 if let error = voiceCaptureViewModel.currentError {
                     Text(error.localizedDescription)

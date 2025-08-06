@@ -447,6 +447,9 @@ class MessageExtensionViewModel: ObservableObject {
     @Published var currentMessage: Message?
     @Published var showToneSelection = false
     
+    // Session tracking for default tone behavior
+    private var isFirstTransformationInSession = true
+    
     private let speechManager: SpeechManager
     private let messageFormatter: MessageFormatter
     private let settingsManager: SettingsManager
@@ -497,6 +500,9 @@ class MessageExtensionViewModel: ObservableObject {
         showToneSelection = false
         errorMessage = nil
         speechManager.transcript = ""
+        // Reset session tracking for next session
+        isFirstTransformationInSession = true
+        NSLog("🎵 Extension: Session reset - next transformation will use default tone")
     }
     
     // MARK: - Message Processing
@@ -510,8 +516,10 @@ class MessageExtensionViewModel: ObservableObject {
         isProcessing = true
         errorMessage = nil
         
-        let tone = settingsManager.lastUsedTone
-        NSLog("🎯 Using tone: %@", tone.rawValue)
+        // Use default tone for first transformation, then switch to last used
+        let tone = isFirstTransformationInSession ? settingsManager.defaultTone : settingsManager.lastUsedTone
+        
+        NSLog("🎯 Extension: Using tone: %@ (first transformation: %@)", tone.rawValue, isFirstTransformationInSession ? "true" : "false")
         
         if let processedText = await messageFormatter.processTranscript(transcript, tone: tone) {
             currentMessage = Message(
@@ -520,6 +528,9 @@ class MessageExtensionViewModel: ObservableObject {
                 tone: tone
             )
             showToneSelection = true
+            
+            // Mark that we've completed the first transformation
+            isFirstTransformationInSession = false
         } else {
             // Show the specific error from MessageFormatter instead of generic message
             errorMessage = messageFormatter.errorMessage ?? "Failed to process your message. Please try again."

@@ -5,6 +5,7 @@ import Security
 class SettingsManager: ObservableObject {
     @Published var openAIAPIKey: String = ""
     @Published var lastUsedTone: MessageTone = .casual
+    @Published var defaultTone: MessageTone = .casual
     @Published var isUsingDefaultKey: Bool = true
     
     private let keychainService = "com.d3marco.VibeText"
@@ -13,6 +14,7 @@ class SettingsManager: ObservableObject {
     // private let sharedUserDefaults = UserDefaults(suiteName: "group.com.d3marco.VibeText.shared")
     private let apiKeyKey = "OpenAIAPIKey"
     private let lastToneKey = "LastUsedTone"
+    private let defaultToneKey = "DefaultTone"
     
     // Load default API key from Secrets.plist
     private var defaultAPIKey: String {
@@ -69,6 +71,12 @@ class SettingsManager: ObservableObject {
         UserDefaults.standard.set(tone.rawValue, forKey: lastToneKey)
     }
     
+    func saveDefaultTone(_ tone: MessageTone) {
+        defaultTone = tone
+        UserDefaults.standard.set(tone.rawValue, forKey: defaultToneKey)
+        print("🎵 SettingsManager: Saved default tone: \(tone.rawValue)")
+    }
+    
     // MARK: - Private Methods
     
     private func loadSettings() {
@@ -88,6 +96,18 @@ class SettingsManager: ObservableObject {
         if let toneString = UserDefaults.standard.string(forKey: lastToneKey),
            let tone = MessageTone(rawValue: toneString) {
             lastUsedTone = tone
+        }
+        
+        // Load default tone
+        if let defaultToneString = UserDefaults.standard.string(forKey: defaultToneKey),
+           let tone = MessageTone(rawValue: defaultToneString) {
+            defaultTone = tone
+            print("🎵 Main App: Loaded default tone: \(tone.rawValue)")
+        } else {
+            // Set default to casual if not previously configured
+            defaultTone = .casual
+            saveDefaultTone(.casual)
+            print("🎵 Main App: Initialized default tone to casual")
         }
     }
     

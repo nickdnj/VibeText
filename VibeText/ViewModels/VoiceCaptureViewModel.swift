@@ -8,6 +8,9 @@ class VoiceCaptureViewModel: ObservableObject, ErrorHandling {
     @Published var showReview = false
     @Published var currentError: AppError?
     
+    // Session tracking for default tone behavior
+    private var isFirstTransformationInSession = true
+    
     private let speechManager: SpeechManager
     private let messageFormatter: MessageFormatter
     private let settingsManager: SettingsManager
@@ -53,7 +56,10 @@ class VoiceCaptureViewModel: ObservableObject, ErrorHandling {
             clearError()
         }
         
-        let tone = settingsManager.lastUsedTone
+        // Use default tone for first transformation, then switch to last used
+        let tone = isFirstTransformationInSession ? settingsManager.defaultTone : settingsManager.lastUsedTone
+        
+        print("🎵 VoiceCaptureViewModel: Using tone: \(tone.rawValue) (first transformation: \(isFirstTransformationInSession))")
         
         if let cleanedText = await messageFormatter.processTranscript(
             speechManager.transcript,
@@ -67,6 +73,12 @@ class VoiceCaptureViewModel: ObservableObject, ErrorHandling {
                 )
                 showReview = true
                 clearError()
+                
+                // Mark that we've completed the first transformation
+                isFirstTransformationInSession = false
+                
+                // Reset processing state when successfully showing review
+                isProcessing = false
             }
         } else {
             // Error is already set by MessageFormatter
@@ -132,6 +144,7 @@ class VoiceCaptureViewModel: ObservableObject, ErrorHandling {
                 currentMessage?.cleanedText = newText
                 currentMessage?.customPrompt = prompt
                 clearError()
+                isProcessing = false
             }
         } else {
             // Error is already set by MessageFormatter
@@ -159,6 +172,7 @@ class VoiceCaptureViewModel: ObservableObject, ErrorHandling {
                 currentMessage?.cleanedText = newText
                 currentMessage?.customPrompt = prompt
                 clearError()
+                isProcessing = false
             }
         } else {
             // Error is already set by MessageFormatter
@@ -171,8 +185,12 @@ class VoiceCaptureViewModel: ObservableObject, ErrorHandling {
     func reset() {
         currentMessage = nil
         showReview = false
+        isProcessing = false
         clearError()
         speechManager.clearTranscript()
+        // Reset session tracking for next session
+        isFirstTransformationInSession = true
+        print("🎵 VoiceCaptureViewModel: Session reset - next transformation will use default tone")
     }
     
     func updateMessageText(_ newText: String) {
