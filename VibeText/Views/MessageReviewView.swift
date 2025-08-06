@@ -7,7 +7,9 @@ struct MessageReviewView: View {
     @State private var customPrompt: String = ""
     @State private var showCustomPrompt = false
     @State private var editableText: String = ""
+    @State private var originalProcessedText: String = ""
     @State private var isRegenerating = false
+    @State private var showResetAlert = false
     
     var body: some View {
         NavigationView {
@@ -140,6 +142,15 @@ struct MessageReviewView: View {
                         }
                         .foregroundColor(.secondary)
                         
+                        // Reset button (only show if text has been modified)
+                        if editableText != originalProcessedText {
+                            Button("Reset to Original") {
+                                showResetAlert = true
+                            }
+                            .foregroundColor(.orange)
+                            .font(.system(size: 14, weight: .medium))
+                        }
+                        
                         Spacer()
                         
                         Button("Copy to Clipboard") {
@@ -174,6 +185,9 @@ struct MessageReviewView: View {
         .onAppear {
             // Initialize editable text with the current message
             editableText = message.cleanedText
+            // Store the original processed text for reset functionality
+            originalProcessedText = message.cleanedText
+            print("📝 MessageReviewView: Stored original processed text: \(originalProcessedText.prefix(50))...")
         }
         .onChange(of: viewModel.currentMessage?.cleanedText) { newValue in
             // Update editable text when the message is regenerated
@@ -181,9 +195,28 @@ struct MessageReviewView: View {
                 editableText = newValue
             }
         }
+        .alert("Reset to Original", isPresented: $showResetAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Reset", role: .destructive) {
+                resetToOriginal()
+            }
+        } message: {
+            Text("This will replace your current text with the original processed version. Any manual edits or tone changes will be lost.")
+        }
     }
     
     // MARK: - Private Methods
+    
+    private func resetToOriginal() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            editableText = originalProcessedText
+        }
+        
+        // Also update the viewModel's message to reflect the reset
+        viewModel.updateMessageText(originalProcessedText)
+        
+        print("🔄 MessageReviewView: Reset to original processed text: \(originalProcessedText.prefix(50))...")
+    }
     
     private func regenerateWithTone(_ tone: MessageTone) async {
         guard let message = viewModel.currentMessage else { 

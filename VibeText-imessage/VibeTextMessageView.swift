@@ -16,6 +16,8 @@ struct VibeTextMessageView: View {
     @State private var showAPIKeyInput = false
     @State private var tempAPIKey = ""
     @State private var editableMessageText = ""
+    @State private var originalProcessedText = ""
+    @State private var showResetAlert = false
     
     private let onSendMessage: (String) -> Void
     
@@ -68,7 +70,7 @@ struct VibeTextMessageView: View {
                             .fontWeight(.medium)
                             .foregroundColor(.secondary)
                         
-                        if let currentMessage = viewModel.currentMessage {
+                        if viewModel.currentMessage != nil {
                             ZStack(alignment: .topLeading) {
                                 // iMessage-style background
                                 RoundedRectangle(cornerRadius: 16)
@@ -159,6 +161,15 @@ struct VibeTextMessageView: View {
                             viewModel.reset()
                         }
                         .foregroundColor(.secondary)
+                        
+                        // Reset button (only show if text has been modified)
+                        if editableMessageText != originalProcessedText && !originalProcessedText.isEmpty {
+                            Button("Reset") {
+                                showResetAlert = true
+                            }
+                            .foregroundColor(.orange)
+                            .font(.system(size: 14, weight: .medium))
+                        }
                         
                         Spacer()
                         
@@ -308,21 +319,43 @@ struct VibeTextMessageView: View {
             Spacer()
         }
         .frame(maxHeight: 350) // Constrain height for iMessage extension
-        .onChange(of: viewModel.currentMessage?.cleanedText) { newText in
+        .onChange(of: viewModel.currentMessage?.cleanedText) { _, newText in
             // Update editable text when a new message is processed or regenerated
             if let text = newText, !text.isEmpty {
                 editableMessageText = text
             }
         }
-        .onChange(of: viewModel.currentMessage?.id) { _ in
+        .onChange(of: viewModel.currentMessage?.id) { _, _ in
             // Initialize editable text when a new message is created
             if let message = viewModel.currentMessage {
                 editableMessageText = message.cleanedText
+                // Store the original processed text for reset functionality
+                originalProcessedText = message.cleanedText
+                NSLog("📝 Extension: Stored original processed text: %@", String(originalProcessedText.prefix(50)))
             }
+        }
+        .alert("Reset to Original", isPresented: $showResetAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Reset", role: .destructive) {
+                resetToOriginal()
+            }
+        } message: {
+            Text("This will replace your current text with the original processed version. Any manual edits or tone changes will be lost.")
         }
     }
     
     // MARK: - Private Methods
+    
+    private func resetToOriginal() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            editableMessageText = originalProcessedText
+        }
+        
+        // Also update the viewModel's message to reflect the reset
+        viewModel.updateMessageText(originalProcessedText)
+        
+        NSLog("🔄 Extension: Reset to original processed text: %@", String(originalProcessedText.prefix(50)))
+    }
     
     private func regenerateWithTone(_ tone: MessageTone) async {
         guard let message = viewModel.currentMessage else { 
@@ -564,6 +597,10 @@ class MessageExtensionViewModel: ObservableObject {
         }
         
         isProcessing = false
+    }
+    
+    func updateMessageText(_ newText: String) {
+        currentMessage?.cleanedText = newText
     }
 }
 
