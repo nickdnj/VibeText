@@ -300,7 +300,7 @@ struct CustomPromptView: View {
         }
         
         // Use the MessageFormatter to transform the current canvas text with custom prompt
-        let messageFormatter = MessageFormatter(settingsManager: SettingsManager())
+        let messageFormatter = MessageFormatter()
         
         if let newText = await messageFormatter.transformMessageWithTone(
             editableText, // Use the current canvas text as source
@@ -336,7 +336,7 @@ struct CustomPromptView: View {
         ),
         viewModel: VoiceCaptureViewModel(
             speechManager: SpeechManager(),
-            messageFormatter: MessageFormatter(settingsManager: SettingsManager()),
+            messageFormatter: MessageFormatter(),
             settingsManager: SettingsManager()
         )
     )

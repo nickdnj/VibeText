@@ -17,7 +17,7 @@ struct ContentView: View {
     init() {
         let settings = SettingsManager()
         let speech = SpeechManager()
-        let formatter = MessageFormatter(settingsManager: settings)
+        let formatter = MessageFormatter()
         let viewModel = VoiceCaptureViewModel(
             speechManager: speech,
             messageFormatter: formatter,

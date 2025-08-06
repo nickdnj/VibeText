@@ -26,7 +26,7 @@ struct VibeTextMessageView: View {
         
         let settings = SettingsManager()
         let speechManager = SpeechManager()
-        let formatter = MessageFormatter(settingsManager: settings)
+        let formatter = MessageFormatter()
         let viewModel = MessageExtensionViewModel(
             speechManager: speechManager,
             messageFormatter: formatter,

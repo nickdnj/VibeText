@@ -241,16 +241,15 @@ class SettingsManager: ObservableObject {
 
 // MARK: - Message Formatter
 
-/// Manages OpenAI API interactions for text processing and tone transformation
+/// Manages D3APIProxy interactions for text processing and tone transformation
 class MessageFormatter: ObservableObject {
     @Published var isProcessing = false
     @Published var errorMessage: String?
     
-    private let settingsManager: SettingsManager
-    private let baseURL = "https://api.openai.com/v1/chat/completions"
+    private let proxyService = ProxyNetworkService.shared
     
-    init(settingsManager: SettingsManager) {
-        self.settingsManager = settingsManager
+    init() {
+        // No longer need SettingsManager since we use proxy
     }
     
     // MARK: - Text Processing
@@ -270,7 +269,7 @@ class MessageFormatter: ObservableObject {
         let userPrompt = buildUserPrompt(transcript: transcript, customPrompt: customPrompt)
         
         do {
-            let response = try await callOpenAI(
+            let response = try await callProxy(
                 systemPrompt: tone.systemPrompt,
                 userPrompt: userPrompt
             )
@@ -305,7 +304,7 @@ class MessageFormatter: ObservableObject {
         let userPrompt = buildToneTransformationPrompt(messageText: messageText, customPrompt: customPrompt)
         
         do {
-            let response = try await callOpenAI(
+            let response = try await callProxy(
                 systemPrompt: tone.systemPrompt,
                 userPrompt: userPrompt
             )
@@ -357,75 +356,63 @@ class MessageFormatter: ObservableObject {
         return prompt
     }
     
-    private func callOpenAI(systemPrompt: String, userPrompt: String) async throws -> String {
-        NSLog("🌐 Starting OpenAI API call...")
-        let apiKey = settingsManager.getCurrentAPIKey()
+    private func callProxy(systemPrompt: String, userPrompt: String) async throws -> String {
+        NSLog("🌐 iMessage Extension: Starting D3APIProxy call...")
         
-        guard !apiKey.isEmpty else {
-            NSLog("❌ No API key configured")
-            throw MessageFormatterError.noAPIKey
-        }
-        
-        NSLog("✅ API key found (length: %d)", apiKey.count)
-        
-        let requestBody: [String: Any] = [
-            "model": "gpt-4o",
-            "messages": [
+        return try await withCheckedThrowingContinuation { continuation in
+            let messages = [
                 ["role": "system", "content": systemPrompt],
                 ["role": "user", "content": userPrompt]
-            ],
-            "max_tokens": 500,
-            "temperature": 0.7
-        ]
-        
-        guard let url = URL(string: baseURL) else {
-            throw MessageFormatterError.invalidURL
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-        } catch {
-            throw MessageFormatterError.invalidRequest
-        }
-        
-        NSLog("🌐 Making network request to OpenAI...")
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            NSLog("❌ Invalid HTTP response")
-            throw MessageFormatterError.invalidResponse
-        }
-        
-        NSLog("🌐 Received response with status code: %d", httpResponse.statusCode)
-        
-        guard httpResponse.statusCode == 200 else {
-            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-            NSLog("❌ API error (status %d): %@", httpResponse.statusCode, errorMessage)
-            throw MessageFormatterError.apiError(statusCode: httpResponse.statusCode, message: errorMessage)
-        }
-        
-        do {
-            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            ]
             
-            guard let choices = json?["choices"] as? [[String: Any]],
-                  let firstChoice = choices.first,
-                  let message = firstChoice["message"] as? [String: Any],
-                  let content = message["content"] as? String else {
-                NSLog("❌ Failed to parse OpenAI response")
-                throw MessageFormatterError.invalidResponse
+            proxyService.sendChatCompletion(
+                messages: messages,
+                model: "gpt-4o-mini",
+                temperature: 0.7,
+                maxTokens: 500
+            ) { result in
+                switch result {
+                case .success(let response):
+                    if let firstChoice = response.choices.first {
+                        let content = firstChoice.message.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        guard !content.isEmpty else {
+                            NSLog("❌ iMessage Extension: Empty response from proxy")
+                            continuation.resume(throwing: MessageFormatterError.invalidResponse)
+                            return
+                        }
+                        
+                        NSLog("✅ iMessage Extension: Proxy API call successful, response length: %d", content.count)
+                        continuation.resume(returning: content)
+                    } else {
+                        NSLog("❌ iMessage Extension: No choices in proxy response")
+                        continuation.resume(throwing: MessageFormatterError.invalidResponse)
+                    }
+                    
+                case .failure(let proxyError):
+                    NSLog("❌ iMessage Extension: Proxy error: %@", proxyError.localizedDescription)
+                    // Map ProxyError to MessageFormatterError
+                    let formatterError = self.mapProxyErrorToFormatterError(proxyError)
+                    continuation.resume(throwing: formatterError)
+                }
             }
-            
-            let result = content.trimmingCharacters(in: .whitespacesAndNewlines)
-            NSLog("✅ OpenAI API call successful, response length: %d", result.count)
-            return result
-        } catch {
-            NSLog("❌ JSON parsing error: %@", error.localizedDescription)
-            throw MessageFormatterError.invalidResponse
+        }
+    }
+    
+    private func mapProxyErrorToFormatterError(_ proxyError: ProxyError) -> MessageFormatterError {
+        switch proxyError {
+        case .authenticationFailed:
+            return .noAPIKey
+        case .networkError, .invalidResponse, .timeout:
+            return .invalidResponse
+        case .rateLimited(let message):
+            return .apiError(statusCode: 429, message: message)
+        case .serverError(let message):
+            return .apiError(statusCode: 500, message: message)
+        case .badRequest(let message):
+            return .apiError(statusCode: 400, message: message)
+        case .decodingError, .invalidRequest, .unknownError:
+            return .invalidResponse
         }
     }
 }
