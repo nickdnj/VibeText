@@ -1,0 +1,79 @@
+VIBETEXT - APP STORE METADATA
+============================
+
+APP NAME:
+VibeText
+
+SUBTITLE:
+AI Voice to Perfect Messages
+
+PROMOTIONAL TEXT:
+Transform your voice into perfectly crafted messages with AI-powered tone adjustment. Record, review, edit, and send - all seamlessly integrated with Messages.
+
+DESCRIPTION:
+VibeText revolutionizes how you communicate by combining voice recording with AI-powered message enhancement.
+
+🎤 Voice-to-Text Recording
+• Record your message naturally using your voice
+• Real-time transcription with Apple's Speech Recognition
+• No typing required - just speak and go
+
+✨ AI-Powered Enhancement  
+• Clean up rambling speech into clear, concise messages
+• 14 sophisticated tone presets including Professional, Gen Z, Boomer, Shakespearean
+• Custom prompts for personalized message refinement
+
+📱 Seamless iMessage Integration
+• Access directly from iMessage app drawer
+• Insert messages directly into conversations
+• Streamlined workflow for quick communication
+
+🎯 Perfect For:
+• Busy professionals crafting important messages
+• Cross-generational communication
+• Accessibility - alternative to typing
+• Quick voice-to-text in any situation
+
+Privacy-First Design: All voice processing happens on-device. Your conversations stay private.
+
+Key Features:
+• 14 tone presets (Professional, Casual, Gen Z, Millennial, Trump, Shakespearean, and more)
+• Manual message editing capabilities  
+• Custom AI guidance prompts
+• iMessage extension for seamless integration
+• On-device speech recognition
+• No subscription required
+
+KEYWORDS:
+voice messaging,AI text,message tone,iMessage extension,voice to text,speech recognition,message editing,professional messaging,communication,AI assistant,text enhancement,voice recording,message formatter,tone adjustment,speech to text
+
+SUPPORT URL:
+https://nickdnj.github.io/VibeText/
+
+MARKETING URL:
+https://nickdnj.github.io/VibeText/
+
+PRIVACY POLICY URL:
+https://nickdnj.github.io/VibeText/privacy-policy.html
+
+REVIEW NOTES:
+VibeText is an AI-powered voice messaging app with iMessage extension integration.
+
+KEY FEATURES TO TEST:
+1. Main app voice recording and transcription
+2. AI message enhancement and tone selection  
+3. iMessage extension functionality (requires testing in Messages app)
+4. Manual message editing capabilities
+
+TESTING INSTRUCTIONS:
+- For iMessage extension: Open Messages app → Start conversation → Tap VibeText icon in app drawer
+- Voice recording requires microphone permissions (will prompt during first use)
+- AI features use OpenAI API (pre-configured for testing)
+
+PRIVACY & SECURITY:
+- Voice processing uses Apple's on-device Speech Recognition
+- No audio data stored or transmitted
+- API communication is secure and minimal
+- Full privacy policy available at: https://nickdnj.github.io/VibeText/privacy-policy.html
+
+The app is designed for users who want to quickly create well-formatted messages using voice input with optional AI enhancement.
