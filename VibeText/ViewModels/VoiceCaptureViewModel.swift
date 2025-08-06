@@ -127,6 +127,46 @@ class VoiceCaptureViewModel: ObservableObject, ErrorHandling {
         }
     }
     
+    /// Regenerate with tone using the current edited text as source (preserves manual edits)
+    func regenerateWithToneFromText(_ currentText: String, tone: MessageTone) async {
+        guard let message = currentMessage else { 
+            print("❌ VoiceCaptureViewModel: No current message to regenerate")
+            return 
+        }
+        
+        print("🔄 VoiceCaptureViewModel: Regenerating with tone: \(tone.rawValue) from current text")
+        
+        await MainActor.run {
+            isProcessing = true
+            clearError()
+        }
+        
+        if let newText = await messageFormatter.transformMessageWithTone(
+            currentText,
+            tone: tone,
+            customPrompt: message.customPrompt
+        ) {
+            await MainActor.run {
+                print("✅ VoiceCaptureViewModel: Successfully regenerated text with tone: \(tone.rawValue) from current text")
+                currentMessage?.cleanedText = newText
+                currentMessage?.tone = tone
+                settingsManager.saveLastUsedTone(tone)
+                
+                // Force UI update by triggering objectWillChange
+                objectWillChange.send()
+            }
+        } else {
+            // Error is already set by MessageFormatter
+            await MainActor.run {
+                print("❌ VoiceCaptureViewModel: Failed to regenerate text with tone: \(tone.rawValue) from current text")
+            }
+        }
+        
+        await MainActor.run {
+            isProcessing = false
+        }
+    }
+    
     func regenerateWithCustomPrompt(_ prompt: String) async {
         guard let message = currentMessage else { return }
         

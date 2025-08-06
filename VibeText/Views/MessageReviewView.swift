@@ -8,6 +8,7 @@ struct MessageReviewView: View {
     @State private var showCustomPrompt = false
     @State private var editableText: String = ""
     @State private var originalProcessedText: String = ""
+    @State private var currentText: String = ""
     @State private var isRegenerating = false
     @State private var showResetAlert = false
     
@@ -30,7 +31,7 @@ struct MessageReviewView: View {
                             )
                         
                         // Multiline, scrollable TextEditor
-                        TextEditor(text: $editableText)
+                        TextEditor(text: $currentText)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
                             .background(Color.clear)
@@ -39,7 +40,7 @@ struct MessageReviewView: View {
                             .frame(minHeight: 140, maxHeight: 240)
                         
                         // Placeholder text when empty
-                        if editableText.isEmpty {
+                        if currentText.isEmpty {
                             Text("Your message will appear here...")
                                 .foregroundColor(Color(UIColor.placeholderText))
                                 .font(.body)
@@ -143,7 +144,7 @@ struct MessageReviewView: View {
                         .foregroundColor(.secondary)
                         
                         // Reset button (only show if text has been modified)
-                        if editableText != originalProcessedText {
+                        if currentText != originalProcessedText {
                             Button("Reset to Original") {
                                 showResetAlert = true
                             }
@@ -154,7 +155,7 @@ struct MessageReviewView: View {
                         Spacer()
                         
                         Button("Copy to Clipboard") {
-                            UIPasteboard.general.string = editableText
+                            UIPasteboard.general.string = currentText
                         }
                         .foregroundColor(.blue)
                     }
@@ -169,7 +170,7 @@ struct MessageReviewView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         // Update the message with edited text before dismissing
-                        viewModel.updateMessageText(editableText)
+                        viewModel.updateMessageText(currentText)
                         dismiss()
                     }
                 }
@@ -179,20 +180,25 @@ struct MessageReviewView: View {
             CustomPromptView(
                 customPrompt: $customPrompt,
                 viewModel: viewModel,
-                editableText: $editableText
+                editableText: $currentText
             )
         }
         .onAppear {
-            // Initialize editable text with the current message
-            editableText = message.cleanedText
+            // Initialize all text states with the current message
+            currentText = message.cleanedText
+            editableText = message.cleanedText // Keep for backward compatibility
             // Store the original processed text for reset functionality
             originalProcessedText = message.cleanedText
-            print("📝 MessageReviewView: Stored original processed text: \(originalProcessedText.prefix(50))...")
+            print("📝 MessageReviewView: Initialized text states")
+            print("   - Current text: \(currentText.prefix(50))...")
+            print("   - Original processed text: \(originalProcessedText.prefix(50))...")
         }
-        .onChange(of: viewModel.currentMessage?.cleanedText) { newValue in
-            // Update editable text when the message is regenerated
+        .onChange(of: viewModel.currentMessage?.cleanedText) { _, newValue in
+            // Update current text when the message is regenerated from tone changes
             if let newValue = newValue, !newValue.isEmpty {
-                editableText = newValue
+                currentText = newValue
+                editableText = newValue // Keep for backward compatibility
+                print("📝 MessageReviewView: Updated current text from regeneration: \(newValue.prefix(50))...")
             }
         }
         .alert("Reset to Original", isPresented: $showResetAlert) {
@@ -209,7 +215,8 @@ struct MessageReviewView: View {
     
     private func resetToOriginal() {
         withAnimation(.easeInOut(duration: 0.3)) {
-            editableText = originalProcessedText
+            currentText = originalProcessedText
+            editableText = originalProcessedText // Keep for backward compatibility
         }
         
         // Also update the viewModel's message to reflect the reset
@@ -219,7 +226,7 @@ struct MessageReviewView: View {
     }
     
     private func regenerateWithTone(_ tone: MessageTone) async {
-        guard let message = viewModel.currentMessage else { 
+        guard viewModel.currentMessage != nil else { 
             print("❌ MessageReviewView: No current message to regenerate")
             return 
         }
@@ -228,8 +235,9 @@ struct MessageReviewView: View {
             isRegenerating = true
         }
         
-        // Use the ViewModel's regenerateWithTone method instead of creating a new MessageFormatter
-        await viewModel.regenerateWithTone(tone)
+        // Use the current text (with manual edits) as the source for tone regeneration
+        // This preserves manual edits across tone changes
+        await viewModel.regenerateWithToneFromText(currentText, tone: tone)
         
         await MainActor.run {
             isRegenerating = false
