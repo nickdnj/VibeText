@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 import os
 
 struct VibeTextMessageView: View {
@@ -19,6 +20,10 @@ struct VibeTextMessageView: View {
     @State private var showResetAlert = false
     
     private let onSendMessage: (String) -> Void
+    
+    // Dynamic line height for sizing the TextEditor respecting Dynamic Type
+    private var bodyLineHeight: CGFloat { UIFont.preferredFont(forTextStyle: .body).lineHeight }
+    private var editorTargetLines: CGFloat { 6 }
     
     init(onSendMessage: @escaping (String) -> Void) {
         print("🎯 VibeText Extension: VibeTextMessageView.init() called")
@@ -86,7 +91,10 @@ struct VibeTextMessageView: View {
                                     .background(Color.clear)
                                     .font(.body)
                                     .scrollContentBackground(.hidden)
-                                    .frame(minHeight: 120, maxHeight: 180)
+                                    .frame(
+                                        minHeight: bodyLineHeight * editorTargetLines + 16,
+                                        idealHeight: bodyLineHeight * editorTargetLines + 16
+                                    )
                                 
                                 // Placeholder when empty
                                 if editableMessageText.isEmpty {
@@ -152,7 +160,7 @@ struct VibeTextMessageView: View {
                             }
                         }
                     }
-                    .frame(maxHeight: 200)
+                    .frame(maxHeight: 240)
                     
                     // Action Buttons
                     HStack(spacing: 12) {
