@@ -9,8 +9,7 @@ enum AppError: LocalizedError, Equatable {
     case apiTimeout
     case apiError(statusCode: Int, message: String)
     case invalidAPIResponse
-    case noAPIKey
-    case apiKeyInvalid
+    case serviceUnavailable
     
     // Audio & Recording Errors
     case microphonePermissionDenied
@@ -37,10 +36,8 @@ enum AppError: LocalizedError, Equatable {
             return "API Error (\(statusCode)): \(message)"
         case .invalidAPIResponse:
             return "Received an invalid response from the server. Please try again."
-        case .noAPIKey:
-            return "No API key configured. Please add your OpenAI API key in settings."
-        case .apiKeyInvalid:
-            return "Invalid API key. Please check your OpenAI API key in settings."
+        case .serviceUnavailable:
+            return "Service temporarily unavailable. Please try again later."
         case .microphonePermissionDenied:
             return "Microphone permission is required for voice recording. Please enable it in Settings."
         case .speechRecognitionNotAuthorized:
@@ -68,8 +65,8 @@ enum AppError: LocalizedError, Equatable {
             return "Check your internet connection and try again."
         case .apiTimeout, .apiError, .invalidAPIResponse:
             return "The server may be busy. Please try again in a moment."
-        case .noAPIKey, .apiKeyInvalid:
-            return "Go to Settings and add your OpenAI API key."
+        case .serviceUnavailable:
+            return "Please wait a moment and try again."
         case .microphonePermissionDenied, .speechRecognitionNotAuthorized:
             return "Go to Settings > Privacy & Security > Microphone/Speech Recognition and enable VibeText."
         case .audioSessionInterrupted, .recordingFailed, .transcriptionFailed, .audioSessionConfigurationFailed:
@@ -91,9 +88,11 @@ enum AppError: LocalizedError, Equatable {
             return true
         case .userCancelled:
             return false
-        case .noAPIKey, .apiKeyInvalid, .microphonePermissionDenied, .speechRecognitionNotAuthorized:
+        case .microphonePermissionDenied, .speechRecognitionNotAuthorized:
             return false
         case .unknownError:
+            return true
+        case .serviceUnavailable:
             return true
         }
     }
@@ -151,8 +150,8 @@ extension AppError {
             return .permissions
         case .audioSessionInterrupted, .recordingFailed, .transcriptionFailed, .audioSessionConfigurationFailed:
             return .audio
-        case .noAPIKey, .apiKeyInvalid:
-            return .api
+        case .serviceUnavailable:
+            return .network
         case .userCancelled:
             return .user
         case .systemInterruption, .unknownError:

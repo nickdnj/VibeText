@@ -13,8 +13,7 @@ struct VibeTextMessageView: View {
     @StateObject private var speechManager = SpeechManager()
     @StateObject private var messageFormatter: MessageFormatter
     @StateObject private var viewModel: MessageExtensionViewModel
-    @State private var showAPIKeyInput = false
-    @State private var tempAPIKey = ""
+    // BYOK UI removed
     @State private var editableMessageText = ""
     @State private var originalProcessedText = ""
     @State private var showResetAlert = false
@@ -267,54 +266,7 @@ struct VibeTextMessageView: View {
                     .multilineTextAlignment(.center)
             }
             
-            // API Key Input Section (Simplified approach)
-            if settingsManager.isUsingDefaultKey || showAPIKeyInput {
-                VStack(spacing: 8) {
-                    if !showAPIKeyInput {
-                        Button("⚙️ Configure API Key") {
-                            showAPIKeyInput = true
-                            tempAPIKey = settingsManager.openAIAPIKey
-                        }
-                        .font(.caption)
-                        .foregroundColor(.blue)
-                        .padding(.horizontal)
-                    } else {
-                        VStack(spacing: 8) {
-                            Text("Enter OpenAI API Key:")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            SecureField("sk-proj-...", text: $tempAPIKey)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .font(.caption)
-                                .padding(.horizontal)
-                            
-                            HStack(spacing: 12) {
-                                Button("Cancel") {
-                                    showAPIKeyInput = false
-                                    tempAPIKey = ""
-                                }
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                
-                                Button("Save") {
-                                    settingsManager.saveAPIKey(tempAPIKey)
-                                    showAPIKeyInput = false
-                                    viewModel.errorMessage = "✅ API key saved!"
-                                }
-                                .font(.caption)
-                                .foregroundColor(.blue)
-                                .disabled(tempAPIKey.isEmpty)
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.vertical, 8)
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(8)
-                        .padding(.horizontal)
-                    }
-                }
-            }
+            // BYOK UI removed
             
             Spacer()
         }

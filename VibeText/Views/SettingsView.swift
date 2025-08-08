@@ -3,80 +3,12 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var settingsManager: SettingsManager
     @Environment(\.dismiss) private var dismiss
-    @State private var tempAPIKey: String = ""
-    @State private var showAlert = false
-    @State private var alertMessage = ""
-    @State private var lastButtonPressed: String = "none" // Debug tracking
+    // BYOK state removed
     
     var body: some View {
         NavigationView {
             Form {
-                Section("OpenAI API Key") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("API Key")
-                                .font(.headline)
-                            Spacer()
-                            if settingsManager.isUsingDefaultKey {
-                                Text("Using Default")
-                                    .font(.caption)
-                                    .foregroundColor(.orange)
-                            }
-                        }
-                        
-                        SecureField("Enter your OpenAI API key", text: $tempAPIKey)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                        
-                        Text("Your API key is stored securely in the device keychain.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        // Debug info
-                        Text("Last button pressed: \(lastButtonPressed)")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
-                    
-                    HStack {
-                        Button("Save Key") {
-                            lastButtonPressed = "Save Key"
-                            print("🔵 Save Key button tapped with value: '\(tempAPIKey)'")
-                            
-                            // Validate the API key format (OpenAI keys start with "sk-")
-                            if tempAPIKey.hasPrefix("sk-") {
-                                print("✅ Valid key detected, saving...")
-                                settingsManager.saveAPIKey(tempAPIKey)
-                                alertMessage = "API key saved successfully!"
-                                showAlert = true
-                            } else if tempAPIKey.isEmpty {
-                                print("❌ Empty key detected")
-                                alertMessage = "Please enter a valid API key"
-                                showAlert = true
-                            } else {
-                                print("❌ Invalid key format detected: '\(tempAPIKey)'")
-                                alertMessage = "Invalid API key format. OpenAI keys start with 'sk-'"
-                                showAlert = true
-                            }
-                        }
-                        .disabled(tempAPIKey.isEmpty)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(4)
-                    }
-                    
-                    HStack {
-                        Button("Reset to Default") {
-                            lastButtonPressed = "Reset to Default"
-                            print("🟠 Reset to Default button tapped")
-                            settingsManager.resetToDefaultKey()
-                            tempAPIKey = ""
-                            alertMessage = "Reset to default key"
-                            showAlert = true
-                        }
-                        .foregroundColor(.orange)
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(4)
-                    }
-                }
+                // BYOK UI removed
                 
                 Section("Voice & Tone Settings") {
                     VStack(alignment: .leading, spacing: 12) {
@@ -137,7 +69,7 @@ struct SettingsView: View {
                             Text("• AI-powered message cleanup")
                             Text("• Tone transformation (Professional, Gen Z, etc.)")
                             Text("• Custom prompt refinement")
-                            Text("• Secure API key storage")
+                            // BYOK: removed
                         }
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -154,14 +86,7 @@ struct SettingsView: View {
                 }
             }
         }
-        .onAppear {
-            tempAPIKey = settingsManager.openAIAPIKey
-        }
-        .alert("Settings", isPresented: $showAlert) {
-            Button("OK") { }
-        } message: {
-            Text(alertMessage)
-        }
+        // BYOK state removed
     }
 }
 

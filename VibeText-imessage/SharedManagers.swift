@@ -110,72 +110,25 @@ enum MessageTone: String, CaseIterable, Codable {
 
 /// Manages app settings and secure storage of API keys
 class SettingsManager: ObservableObject {
-    @Published var openAIAPIKey: String = ""
+    // BYOK removed
     @Published var lastUsedTone: MessageTone = .casual
     @Published var defaultTone: MessageTone = .casual
-    @Published var isUsingDefaultKey: Bool = true
+    // BYOK removed
     
     private let keychainService = "com.d3marco.VibeText"
     // App Groups temporarily disabled due to provisioning issues
     // private let keychainAccessGroup = "group.com.d3marco.VibeText.shared"
     // private let sharedUserDefaults = UserDefaults(suiteName: "group.com.d3marco.VibeText.shared")
-    private let apiKeyKey = "OpenAIAPIKey"
+    // BYOK removed
     private let lastToneKey = "LastUsedTone"
     private let defaultToneKey = "DefaultTone"
-    // Load default API key from Secrets.plist
-    private var defaultAPIKey: String {
-        // Try multiple bundle approaches for extension compatibility
-        let bundlesToTry = [
-            Bundle.main,
-            Bundle(for: MessagesViewController.self)
-        ]
-        
-        for bundle in bundlesToTry {
-            if let path = bundle.path(forResource: "Secrets", ofType: "plist"),
-               let plist = NSDictionary(contentsOfFile: path),
-               let key = plist["DefaultOpenAIAPIKey"] as? String {
-                NSLog("🔑 Extension: Successfully loaded default API key from Secrets.plist via %@ (length: %d)", bundle.bundleIdentifier ?? "unknown", key.count)
-                return key
-            }
-        }
-        
-        NSLog("❌ Extension: Failed to load default API key from Secrets.plist from any bundle")
-        return "sk-proj-1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" // Fallback
-    }
+    // BYOK removed: no default API key
     
     init() {
         loadSettings()
     }
     
-    // MARK: - API Key Management
-    
-    func saveAPIKey(_ key: String) {
-        openAIAPIKey = key
-        isUsingDefaultKey = key.isEmpty
-        
-        if key.isEmpty {
-            // Clear extension storage
-            UserDefaults.standard.removeObject(forKey: "ExtensionAPIKey")
-            NSLog("🗑️ Extension: Cleared API key from extension storage")
-        } else {
-            // Save to extension's local storage (simplified approach)
-            UserDefaults.standard.set(key, forKey: "ExtensionAPIKey")
-            NSLog("✅ Extension: Saved API key to extension local storage")
-        }
-    }
-    
-    func getCurrentAPIKey() -> String {
-        let key = openAIAPIKey.isEmpty ? defaultAPIKey : openAIAPIKey
-        NSLog("🔑 Extension: getCurrentAPIKey() returning key with length: %d", key.count)
-        NSLog("🔑 Extension: isUsingDefaultKey: %@", isUsingDefaultKey ? "true" : "false")
-        return key
-    }
-    
-    func resetToDefaultKey() {
-        openAIAPIKey = ""
-        isUsingDefaultKey = true
-        deleteAPIKeyFromKeychain()
-    }
+    // BYOK removed: no API key management; one-time cleanup in loadSettings
     
     // MARK: - Tone Settings
     
@@ -194,24 +147,8 @@ class SettingsManager: ObservableObject {
     
     private func loadSettings() {
         NSLog("🔑 Extension: Loading settings...")
-        
-        // Load API key from keychain
-        if let apiKey = loadAPIKeyFromKeychain() {
-            NSLog("✅ Extension: Successfully loaded API key from keychain (length: %d)", apiKey.count)
-            openAIAPIKey = apiKey
-            isUsingDefaultKey = false
-        } else {
-            NSLog("❌ Extension: Failed to load API key from keychain, using default")
-            isUsingDefaultKey = true
-        }
-        
-        NSLog("🔑 Extension: isUsingDefaultKey: %@", isUsingDefaultKey ? "true" : "false")
-        NSLog("🔑 Extension: getCurrentAPIKey() returns key with length: %d", getCurrentAPIKey().count)
-        
-        // Debug: Test Secrets.plist access
-        NSLog("🔍 Extension: Testing Secrets.plist access...")
-        let testKey = defaultAPIKey
-        NSLog("🔍 Extension: defaultAPIKey length: %d", testKey.count)
+        // One-time cleanup of legacy BYOK storage
+        UserDefaults.standard.removeObject(forKey: "ExtensionAPIKey")
         
         // Load last used tone
         if let toneRawValue = UserDefaults.standard.string(forKey: lastToneKey),
@@ -232,31 +169,7 @@ class SettingsManager: ObservableObject {
         }
     }
     
-    private func saveAPIKeyToKeychain(_ key: String) {
-        // Simplified approach - not using keychain for extension
-        NSLog("🔑 Extension: Keychain save disabled - using UserDefaults instead")
-    }
-    
-    private func loadAPIKeyFromKeychain() -> String? {
-        NSLog("🔑 Extension: App Groups disabled - using extension local storage...")
-        
-        // SIMPLIFIED APPROACH: Use extension's own UserDefaults
-        // This won't share with main app, but allows extension to work independently
-        if let apiKey = UserDefaults.standard.string(forKey: "ExtensionAPIKey"),
-           !apiKey.isEmpty {
-            NSLog("✅ Extension: Successfully loaded API key from extension storage (length: %d)", apiKey.count)
-            return apiKey
-        }
-        
-        NSLog("⚠️ Extension: No API key found in extension storage")
-        NSLog("💡 Extension: User will need to enter API key directly in extension")
-        return nil
-    }
-    
-    private func deleteAPIKeyFromKeychain() {
-        // Simplified approach - not using keychain for extension
-        NSLog("🔑 Extension: Keychain delete disabled - using UserDefaults instead")
-    }
+    // BYOK removed: no keychain helpers
 }
 
 // MARK: - Message Formatter
@@ -422,7 +335,7 @@ class MessageFormatter: ObservableObject {
     private func mapProxyErrorToFormatterError(_ proxyError: ProxyError) -> MessageFormatterError {
         switch proxyError {
         case .authenticationFailed:
-            return .noAPIKey
+            return .serviceUnavailable
         case .networkError, .invalidResponse, .timeout:
             return .invalidResponse
         case .rateLimited(let message):
@@ -440,24 +353,24 @@ class MessageFormatter: ObservableObject {
 // MARK: - Message Formatter Errors
 
 enum MessageFormatterError: LocalizedError {
-    case noAPIKey
     case invalidURL
     case invalidRequest
     case invalidResponse
     case apiError(statusCode: Int, message: String)
+    case serviceUnavailable
     
     var errorDescription: String? {
         switch self {
-        case .noAPIKey:
-            return "No API key configured. Please add your OpenAI API key in settings."
         case .invalidURL:
             return "Invalid API URL"
         case .invalidRequest:
             return "Invalid request format"
         case .invalidResponse:
-            return "Invalid response from OpenAI"
+            return "Invalid response from the service"
         case .apiError(let statusCode, let message):
             return "API Error (\(statusCode)): \(message)"
+        case .serviceUnavailable:
+            return "Service temporarily unavailable. Please try again later."
         }
     }
 }

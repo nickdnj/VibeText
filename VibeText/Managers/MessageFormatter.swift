@@ -244,7 +244,7 @@ class MessageFormatter: ObservableObject, ErrorHandling {
     private func mapProxyErrorToAppError(_ proxyError: ProxyError) -> AppError {
         switch proxyError {
         case .authenticationFailed:
-            return .apiKeyInvalid
+            return .serviceUnavailable
         case .networkError, .invalidResponse:
             return .networkUnreachable
         case .timeout:
